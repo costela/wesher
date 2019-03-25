@@ -19,7 +19,7 @@ func main() {
 	}
 	logrus.SetLevel(logLevel)
 
-	wg, err := newWGConfig(config.InterfaceName, config.WireguardPort)
+	wg, err := newWGConfig(config.Interface, config.WireguardPort)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	nodec, errc := cluster.members() // avoid deadlocks by starting before join
-	if err := cluster.join(config.JoinAddrs); err != nil {
+	if err := cluster.join(config.Join); err != nil {
 		logrus.Fatalf("could not join cluster: %s", err)
 	}
 
