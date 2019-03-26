@@ -14,7 +14,7 @@ const clusterKeyLen = 32
 type config struct {
 	ClusterKey    []byte   `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
 	Join          []string `desc:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
-	BindAddr      string   `id:"bind-addr" desc:"IP address to bind to for cluster membership" default:"0.0.0.0"`
+	BindAddr      string   `id:"bind-addr" desc:"IP address to bind to for cluster membership"`
 	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
 	WireguardPort int      `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
 	OverlayNet    *network `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
@@ -44,14 +44,14 @@ func loadConfig() (*config, error) {
 	}
 
 	// FIXME: this is a work around for memberlist refusing to listen on public IPs
-	if config.BindAddr == "0.0.0.0" {
-		forceBindAddr, err := sockaddr.GetPublicIP()
+	if config.BindAddr == "" {
+		detectedBindAddr, err := sockaddr.GetPublicIP()
 		if err != nil {
 			return nil, err
 		}
 		// if we cannot find a public IP, let memberlist do its thing
-		if forceBindAddr != "" {
-			config.BindAddr = forceBindAddr
+		if detectedBindAddr != "" {
+			config.BindAddr = detectedBindAddr
 		}
 	}
 
