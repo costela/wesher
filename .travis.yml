@@ -1,0 +1,36 @@
+language: go
+
+dist: xenial
+
+go:
+  - "1.11"
+  - "1.12"
+  - "master"
+
+os:
+  - linux
+
+matrix:
+  allow_failures:
+    - go: "master"
+  fast_finish: true
+
+env:
+  - GO111MODULE=on
+
+script: go test -v ./...
+
+cache:
+  directories:
+    - $HOME/gopath/pkg/mod
+
+install: true  # skip, handled by "cache" stage
+
+stages:
+  - cache
+  - test
+
+jobs:
+  include:
+    - stage: cache
+      script: go mod download -json
