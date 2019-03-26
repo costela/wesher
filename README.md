@@ -1,9 +1,14 @@
+[![Build Status](https://travis-ci.org/costela/wesher.svg?branch=master)](https://travis-ci.org/costela/wesher)
+[![Go Report Card](https://goreportcard.com/badge/github.com/costela/wesher)](https://goreportcard.com/report/github.com/costela/wesher)
+
 # wesher
 
-Mesh overlay network manager, using [wireguard](https://www.wireguard.com/).
+`wesher` creates and manages a mesh overlay network across a group of nodes, using [wireguard](https://www.wireguard.com/).
+
+Its main use-case is adding low-maintenance security to public-cloud networks or connecting different cloud providers.
 
 **⚠ WARNING**: since mesh membership is controlled by a mesh-wide pre-shared key, this effectively downgrades some of the
-security benefits from wireguard. See [security considerations](#security-considerations) below for more info.
+security benefits from wireguard. See [security considerations](#security-considerations) below for more details.
 
 ## Quickstart
 
@@ -36,7 +41,7 @@ Then, on any further node:
 Where `XXXXX` is the base64 encoded 32 bit key printed by the step above and `x.x.x.x` is the hostname or IP of any of
 the nodes already joined to the mesh cluster.
 
-*Note*: `wireguard`, and therefore `wesher`, need root access.
+*Note*: `wireguard` - and therefore `wesher` - need root access.
 
 ## Features
 
