@@ -66,11 +66,7 @@ func (eh *EtcHosts) WriteEntries(ipsToNames map[string][]string) error {
 		return err
 	}
 
-	if err = eh.movePreservePerms(tmp, etcHosts); err != nil {
-		return err
-	}
-
-	return nil
+	return eh.movePreservePerms(tmp, etcHosts)
 }
 
 func (eh *EtcHosts) writeEntries(orig io.Reader, dest io.Writer, ipsToNames map[string][]string) error {

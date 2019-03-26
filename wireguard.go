@@ -84,17 +84,11 @@ func (wg *wgState) writeConf(nodes []node) error {
 }
 
 func (wg *wgState) downInterface() error {
-	if err := exec.Command("wg-quick", "down", wg.iface).Run(); err != nil {
-		return err
-	}
-	return nil
+	return exec.Command("wg-quick", "down", wg.iface).Run()
 }
 
 func (wg *wgState) upInterface() error {
-	if err := exec.Command("wg-quick", "up", wg.iface).Run(); err != nil {
-		return err
-	}
-	return nil
+	return exec.Command("wg-quick", "up", wg.iface).Run()
 }
 
 func wgKeyPair() (string, string, error) {
