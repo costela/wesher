@@ -35,7 +35,7 @@ new cluster key generated: XXXXX
 
 Then, on any further node:
 ```
-# wesher --clusterkey XXXXX --joinaddrs x.x.x.x
+# wesher --cluster-key XXXXX --join x.x.x.x
 ```
 
 Where `XXXXX` is the base64 encoded 32 bit key printed by the step above and `x.x.x.x` is the hostname or IP of any of
