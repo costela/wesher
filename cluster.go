@@ -184,6 +184,7 @@ func (c *cluster) members() (<-chan []node, <-chan error) {
 					continue
 				}
 				nodes = append(nodes, node{
+					Name:     n.Name,
 					Addr:     n.Addr,
 					nodeMeta: meta,
 				})
@@ -200,6 +201,7 @@ func (c *cluster) members() (<-chan []node, <-chan error) {
 }
 
 type node struct {
+	Name string
 	Addr net.IP
 	nodeMeta
 }

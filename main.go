@@ -6,6 +6,8 @@ import (
 	"syscall"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/costela/wesher/etchosts"
 )
 
 func main() {
@@ -52,12 +54,31 @@ func main() {
 			if err := wg.upInterface(); err != nil {
 				logrus.Errorf("could not up interface: %s", err)
 			}
+			if !config.NoEtcHosts {
+				if err := writeToEtcHosts(nodes); err != nil {
+					logrus.Errorf("could not write hosts entries: %s", err)
+				}
+			}
 		case errs := <-errc:
 			logrus.Errorf("could not receive node info: %s", errs)
 		case <-incomingSigs:
 			logrus.Info("terminating...")
 			cluster.leave()
+			if err := writeToEtcHosts(nil); err != nil {
+				logrus.Errorf("could not remove stale hosts entries: %s", err)
+			}
 			os.Exit(0)
 		}
 	}
+}
+
+func writeToEtcHosts(nodes []node) error {
+	hosts := make(map[string][]string, len(nodes))
+	for _, n := range nodes {
+		hosts[n.OverlayAddr.String()] = []string{n.Name}
+	}
+	hostsFile := &etchosts.EtcHosts{
+		Logger: logrus.StandardLogger(),
+	}
+	return hostsFile.WriteEntries(hosts)
 }
