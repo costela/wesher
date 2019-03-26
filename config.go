@@ -19,9 +19,10 @@ type config struct {
 	Interface     string   `desc:"name of the wireguard interface to create and manage" default:"wgoverlay"`
 	NoEtcHosts    bool     `id:"no-etc-hosts" desc:"disable writing of entries to /etc/hosts"`
 	LogLevel      string   `id:"log-level" desc:"set the verbosity (debug/info/warn/error)" default:"warn"`
+	Version       bool     `desc:"display current version and exit"`
 
-	// for easier local testing
-	UseIPAsName bool `default:"false" opts:"hidden"`
+	// for easier local testing; will break etchosts entry
+	UseIPAsName bool `id:"ip-as-name" default:"false" opts:"hidden"`
 }
 
 func loadConfig() (*config, error) {

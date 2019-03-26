@@ -1,6 +1,7 @@
 package main // import "github.com/costela/wesher"
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,10 +11,16 @@ import (
 	"github.com/costela/wesher/etchosts"
 )
 
+var version = "dev"
+
 func main() {
 	config, err := loadConfig()
 	if err != nil {
 		logrus.Fatal(err)
+	}
+	if config.Version {
+		fmt.Println(version)
+		os.Exit(0)
 	}
 	logLevel, err := logrus.ParseLevel(config.LogLevel)
 	if err != nil {
