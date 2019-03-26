@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/hashicorp/go-sockaddr"
+
 	"github.com/stevenroose/gonfig"
 )
 
@@ -39,6 +41,18 @@ func loadConfig() (*config, error) {
 
 	if bits, _ := ((*net.IPNet)(config.OverlayNet)).Mask.Size(); bits%8 != 0 {
 		return nil, fmt.Errorf("unsupported overlay network size; net mask must be multiple of 8, got %d", bits)
+	}
+
+	// FIXME: this is a work around for memberlist refusing to listen on public IPs
+	if config.BindAddr == "0.0.0.0" {
+		forceBindAddr, err := sockaddr.GetPublicIP()
+		if err != nil {
+			return nil, err
+		}
+		// if we cannot find a public IP, let memberlist do its thing
+		if forceBindAddr != "" {
+			config.BindAddr = forceBindAddr
+		}
 	}
 
 	return &config, nil
