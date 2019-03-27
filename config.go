@@ -5,7 +5,6 @@ import (
 	"net"
 
 	"github.com/hashicorp/go-sockaddr"
-
 	"github.com/stevenroose/gonfig"
 )
 
@@ -14,6 +13,7 @@ const clusterKeyLen = 32
 type config struct {
 	ClusterKey    []byte   `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
 	Join          []string `desc:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
+	Init          bool     `desc:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
 	BindAddr      string   `id:"bind-addr" desc:"IP address to bind to for cluster membership"`
 	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
 	WireguardPort int      `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
@@ -43,7 +43,7 @@ func loadConfig() (*config, error) {
 		return nil, fmt.Errorf("unsupported overlay network size; net mask must be multiple of 8, got %d", bits)
 	}
 
-	// FIXME: this is a work around for memberlist refusing to listen on public IPs
+	// FIXME: this is a workaround for memberlist refusing to listen on public IPs if BindAddr==0.0.0.0
 	if config.BindAddr == "" {
 		detectedBindAddr, err := sockaddr.GetPublicIP()
 		if err != nil {
@@ -52,6 +52,8 @@ func loadConfig() (*config, error) {
 		// if we cannot find a public IP, let memberlist do its thing
 		if detectedBindAddr != "" {
 			config.BindAddr = detectedBindAddr
+		} else {
+			config.BindAddr = "0.0.0.0"
 		}
 	}
 
