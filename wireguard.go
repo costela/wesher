@@ -84,6 +84,9 @@ func (wg *wgState) writeConf(nodes []node) error {
 }
 
 func (wg *wgState) downInterface() error {
+	if err := exec.Command("wg", "show", wg.iface).Run(); err != nil {
+		return nil // assume a failure means the interface is not there
+	}
 	return exec.Command("wg-quick", "down", wg.iface).Run()
 }
 
