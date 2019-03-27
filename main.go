@@ -74,6 +74,9 @@ func main() {
 			if err := writeToEtcHosts(nil); err != nil {
 				logrus.Errorf("could not remove stale hosts entries: %s", err)
 			}
+			if err := wg.downInterface(); err != nil {
+				logrus.Errorf("could not down interface: %s", err)
+			}
 			os.Exit(0)
 		}
 	}
