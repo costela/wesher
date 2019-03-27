@@ -87,7 +87,7 @@ func newCluster(config *config, wg *wgState) (*cluster, error) {
 	mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: cluster.events}
 	mlConfig.Delegate = &cluster
 
-	wg.assignIP((*net.IPNet)(config.OverlayNet), cluster.localName)
+	wg.assignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.localName)
 
 	ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 	return &cluster, nil
