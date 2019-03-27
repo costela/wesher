@@ -43,7 +43,10 @@ const statePath = "/var/lib/wesher/state.json"
 func newCluster(config *config, wg *wgState) (*cluster, error) {
 	clusterKey := config.ClusterKey
 
-	state := loadState()
+	state := &ClusterState{}
+	if !config.Init {
+		loadState(state)
+	}
 	if len(clusterKey) == 0 {
 		clusterKey = state.ClusterKey
 	}
@@ -223,19 +226,21 @@ func (c *cluster) saveState() error {
 	return ioutil.WriteFile(statePath, stateOut, 0700)
 }
 
-func loadState() *ClusterState {
+func loadState(cs *ClusterState) {
 	content, err := ioutil.ReadFile(statePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			logrus.Warnf("could not open state in %s: %s", statePath, err)
 		}
-		return &ClusterState{}
+		return
 	}
 
-	s := &ClusterState{}
-	if err := json.Unmarshal(content, s); err != nil {
+	// avoid partially unmarshalled content by using a temp var
+	csTmp := &ClusterState{}
+	if err := json.Unmarshal(content, csTmp); err != nil {
 		logrus.Warnf("could not decode state: %s", err)
-		return &ClusterState{} // avoid partially unmarshalled content
+	} else {
+		*cs = *csTmp
 	}
-	return s
+	return
 }
