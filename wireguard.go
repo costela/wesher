@@ -1,8 +1,8 @@
 package main
 
 import (
-	"crypto/md5"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"os"
 	"os/exec"
@@ -33,8 +33,11 @@ type wgState struct {
 	PubKey      string
 }
 
+var wgPath = "wg"
+var wgQuickPath = "wg-quick"
+
 func newWGConfig(iface string, port int) (*wgState, error) {
-	if err := exec.Command("wg").Run(); err != nil {
+	if err := exec.Command(wgPath).Run(); err != nil {
 		return nil, fmt.Errorf("could not exec wireguard: %s", err)
 	}
 
@@ -54,16 +57,18 @@ func newWGConfig(iface string, port int) (*wgState, error) {
 
 func (wg *wgState) assignOverlayAddr(ipnet *net.IPNet, name string) {
 	// TODO: this is way too brittle and opaque
-	ip := []byte(ipnet.IP)
 	bits, size := ipnet.Mask.Size()
+	ip := make([]byte, net.IPv6len)
+	copy(ip, []byte(ipnet.IP))
 
-	h := md5.New()
+	h := fnv.New128a()
 	h.Write([]byte(name))
 	hb := h.Sum(nil)
 
-	for i := 0; i < (size-bits)/8; i++ {
-		ip[size/8-i-1] = hb[i]
+	for i := 1; i <= (size-bits)/8; i++ {
+		ip[len(ip)-i] = hb[len(hb)-i]
 	}
+
 	wg.OverlayAddr = net.IP(ip)
 }
 
@@ -84,25 +89,25 @@ func (wg *wgState) writeConf(nodes []node) error {
 }
 
 func (wg *wgState) downInterface() error {
-	if err := exec.Command("wg", "show", wg.iface).Run(); err != nil {
+	if err := exec.Command(wgPath, "show", wg.iface).Run(); err != nil {
 		return nil // assume a failure means the interface is not there
 	}
-	return exec.Command("wg-quick", "down", wg.iface).Run()
+	return exec.Command(wgQuickPath, "down", wg.iface).Run()
 }
 
 func (wg *wgState) upInterface() error {
-	return exec.Command("wg-quick", "up", wg.iface).Run()
+	return exec.Command(wgQuickPath, "up", wg.iface).Run()
 }
 
 func wgKeyPair() (string, string, error) {
-	cmd := exec.Command("wg", "genkey")
+	cmd := exec.Command(wgPath, "genkey")
 	outPriv := strings.Builder{}
 	cmd.Stdout = &outPriv
 	if err := cmd.Run(); err != nil {
 		return "", "", err
 	}
 
-	cmd = exec.Command("wg", "pubkey")
+	cmd = exec.Command(wgPath, "pubkey")
 	outPub := strings.Builder{}
 	cmd.Stdout = &outPub
 	cmd.Stdin = strings.NewReader(outPriv.String())

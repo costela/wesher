@@ -5,7 +5,6 @@
 *.so
 *.dylib
 wesher
-wg
 
 # Test binary, build with `go test -c`
 *.test
