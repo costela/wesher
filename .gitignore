@@ -5,6 +5,7 @@
 *.so
 *.dylib
 wesher
+wesher-*
 
 # Test binary, build with `go test -c`
 *.test
@@ -14,4 +15,4 @@ wesher
 
 # Misc
 *.tmp
-*.sha256
+*.sha256sums

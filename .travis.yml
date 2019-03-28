@@ -42,9 +42,10 @@ jobs:
         provider: releases
         api_key:
           secure: "hWSa2rdQDwUrEtRw17L2P2um+nnuAaFm7+k97KYGboW3p0JY+nPJspLshT4XaeTuB4FQMVKQxXY5Tn0aXcp4lLFqXbUrOssFUDXVpL5g0MopX/8lItt0JZ/6L3tJN57lKkEZD8nDRR2f0DYe9c6mOnSG5I+4n5NOBqbhb8S1CD6qS4KU38Ev45X7JB42D6v/KflR7jNVYQ20jIPhVW0VhksB6WiVGBo8aNnKpqQyyNehOdRDw8qtUmj/XzKj6mN8co4WS2UxTb1yQchXq5vkipqdrejgqHy3njhJ6563MKGmGAyvV5Ok8a2BVpAgi9uLf8K74fTAKbJje9RGrGMccCWWuDlKxLtdZKlYgTt2KQgVA9ncaluYSVa6dbk51l1NGYvVYlX0yNwQ0g2iUN0dstKKdqkeqngKDiuaMiSOCeSY7Fv00bWLtLOjOQX644G1o4VLm09iWBAwQHHZhMdBxUks7wo876cKQkW1LgursA4IDoKSi4vZ8KQqeZjoLbJK/QBRhNKA57jI8StoaegZODG4jJRVsHbEA5FmFsHclbzgg7GZD7GyZtX0BJ655NRYis1W44IHLda2Wq7Fz42nPivvjQVhHvyodf50OUU+f4EPJwqEnWgT3dYO23/DEHst4Z/6yY7ivhaBm9N4rJ2Gkn26Bjtz1IGHM0HJxXQoEJE="
+        file_glob: true
         file:
-          - wesher
-          - wesher.sha256
+          - wesher-*
+          - wesher.sha256sums
         skip_cleanup: true
         on:
           tags: true
