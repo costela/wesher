@@ -1,6 +1,6 @@
 VERSION=`git describe --tags --dirty --always`
 
-GOFLAGS=-ldflags "-X main.version=${VERSION}" -asmflags -trimpath
+GOFLAGS=-ldflags "-X main.version=${VERSION}" -gcflags=all=-trimpath=$(PWD) -asmflags=all=-trimpath=$(PWD)
 
 build:
 	GOARCH=amd64 go build ${GOFLAGS} -o wesher-amd64 ${OPTS}
