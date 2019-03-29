@@ -85,3 +85,15 @@ func Test_wgState_assignOverlayAddr_no_obvious_collisions(t *testing.T) {
 		assignments[wg.OverlayAddr.String()] = n
 	}
 }
+
+// This should ensure the obvious fact that the same name should map to the same IP if called twice.
+func Test_wgState_assignOverlayAddr_repeatable(t *testing.T) {
+	ipnet := &net.IPNet{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(24, 32)}
+	wg1 := &wgState{}
+	wg1.assignOverlayAddr(ipnet, "test")
+	wg2 := &wgState{}
+	wg2.assignOverlayAddr(ipnet, "test")
+	if wg1.OverlayAddr.String() != wg2.OverlayAddr.String() {
+		t.Errorf("assignOverlayAddr() %s != %s", wg1.OverlayAddr, wg2.OverlayAddr)
+	}
+}
