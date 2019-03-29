@@ -58,7 +58,7 @@ func newWGConfig(iface string, port int) (*wgState, error) {
 func (wg *wgState) assignOverlayAddr(ipnet *net.IPNet, name string) {
 	// TODO: this is way too brittle and opaque
 	bits, size := ipnet.Mask.Size()
-	ip := make([]byte, net.IPv6len)
+	ip := make([]byte, len(ipnet.IP))
 	copy(ip, []byte(ipnet.IP))
 
 	h := fnv.New128a()
