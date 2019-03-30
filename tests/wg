@@ -1,11 +1,5 @@
 #!/bin/sh
 
-# docker run --rm -it --hostname test3 --name test3 --network wesher_test --volume `pwd`:/app golang:1.12-alpine
-# cd /app
-# apk add git
-# export PATH=/app:$PATH
-# go run . --loglevel debug --clusterkey 'ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc='
-
 case $1 in
     genkey)
         echo "ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc="
@@ -15,5 +9,7 @@ case $1 in
         echo "VceweY6x/QdGXEQ6frXrSd8CwUAInUmqIc6G/qi8FHo="
         ;;
     *)
+        echo "what?"
+        exit 1
         ;;
 esac
