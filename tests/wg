@@ -1,6 +1,9 @@
 #!/bin/sh
 
 case $1 in
+    '')
+        echo "nothing to see here"
+        ;;
     genkey)
         echo "ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc="
         ;;

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+case $1 in
+    up)
+        echo "up $2"
+        ;;
+    pubkey)
+        echo "down $2"
+        ;;
+    *)
+        echo "what?"
+        exit 1
+        ;;
+esac
