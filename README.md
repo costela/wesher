@@ -125,3 +125,13 @@ different cloud providers) can lead to a split-brain scenario where each side th
 There is currently no clean solution for this problem, but one could work around it by designating edge nodes which
 periodically restart `wesher` with the `--join` option pointing to the other side.
 Future versions might include the notion of a "static" node to more cleanly avoid this.
+
+### Broken connections on join/leave
+
+Currently `wesher` uses wireguard's management commands (`wg` and `wg-quick`) to talk to wireguard. The current
+implementation is very naive and recreates the wireguard interface for every configuration change (e.g. nodes' joining
+and leavning). Since wireguard's underlying traffic is essentially stateless, this does not directly impact TCP
+connections on the overlay network. The connection should treat it as normal packet drops.  
+However, if your application is sensitive to ICMP errors (e.g. "no route to host"), or if you are using UDP, you might
+experience connection resets and message loss, respectively.  
+This behavior will be improved in future versions.
