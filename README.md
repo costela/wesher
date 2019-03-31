@@ -38,7 +38,7 @@ Then, on any further node:
 # wesher --cluster-key XXXXX --join x.x.x.x
 ```
 
-Where `XXXXX` is the base64 encoded 32 bit key printed by the step above and `x.x.x.x` is the hostname or IP of any of
+Where `XXXXX` is the base64 encoded 256 bit key printed by the step above and `x.x.x.x` is the hostname or IP of any of
 the nodes already joined to the mesh cluster.
 
 *Note*: `wireguard` - and therefore `wesher` - need root access.
@@ -55,7 +55,7 @@ several nodes across multiple cloud providers, or simply to secure inter-node co
 The wireguard private keys are created on startup for each node and the respective public keys are then broadcast
 across the cluster. 
 
-The control-plane cluster communication is secured with a pre-shared AES-256 bit key. This key can be be automatically
+The control-plane cluster communication is secured with a pre-shared AES-256 key. This key can be be automatically
 created during startup of the first node in a cluster, or it can be provided (see [configuration](#configuration-options)).
 The cluster key must then be sent to other nodes via a out-of-band secure channel (e.g. ssh, cloud-init, etc).
 Once set, the cluster key is saved locally and reused on the next startup.
