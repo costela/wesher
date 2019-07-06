@@ -45,6 +45,7 @@ func main() {
 
 	incomingSigs := make(chan os.Signal, 1)
 	signal.Notify(incomingSigs, syscall.SIGTERM, os.Interrupt)
+	logrus.Debug("waiting for cluster events")
 	for {
 		select {
 		case nodes := <-nodec:
@@ -71,8 +72,10 @@ func main() {
 		case <-incomingSigs:
 			logrus.Info("terminating...")
 			cluster.leave()
-			if err := writeToEtcHosts(nil); err != nil {
-				logrus.Errorf("could not remove stale hosts entries: %s", err)
+			if !config.NoEtcHosts {
+				if err := writeToEtcHosts(nil); err != nil {
+					logrus.Errorf("could not remove stale hosts entries: %s", err)
+				}
 			}
 			if err := wg.downInterface(); err != nil {
 				logrus.Errorf("could not down interface: %s", err)
