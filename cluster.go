@@ -107,7 +107,7 @@ func (c *cluster) LocalState(join bool) []byte                { return nil }
 func (c *cluster) MergeRemoteState(buf []byte, join bool)     {}
 
 type nodeMeta struct {
-	OverlayAddr net.IP
+	OverlayAddr net.IPNet
 	PubKey      string
 }
 
@@ -115,7 +115,7 @@ func (c *cluster) NodeMeta(limit int) []byte {
 	buf := &bytes.Buffer{}
 	if err := gob.NewEncoder(buf).Encode(nodeMeta{
 		OverlayAddr: c.wg.OverlayAddr,
-		PubKey:      c.wg.PubKey,
+		PubKey:      c.wg.PubKey.String(),
 	}); err != nil {
 		logrus.Errorf("could not encode local state: %s", err)
 		return nil
@@ -128,6 +128,8 @@ func (c *cluster) NodeMeta(limit int) []byte {
 }
 
 func decodeNodeMeta(b []byte) (nodeMeta, error) {
+	// TODO: we blindly trust the info we get from the peers; We should be more defensive to limit the damage a leaked
+	// PSK can cause.
 	nm := nodeMeta{}
 	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(&nm); err != nil {
 		return nm, errwrap.Wrapf("could not decode: {{err}}", err)

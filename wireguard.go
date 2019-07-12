@@ -1,53 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"hash/fnv"
 	"net"
 	"os"
-	"os/exec"
-	"strings"
-	"text/template"
+
+	"github.com/pkg/errors"
+	"github.com/vishvananda/netlink"
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
-
-const wgConfPath = "/etc/wireguard/%s.conf"
-const wgConfTpl = `
-# this file was generated automatically by wesher - DO NOT MODIFY
-[Interface]
-PrivateKey = {{ .PrivKey }}
-Address = {{ .OverlayAddr }}
-ListenPort = {{ .Port }}
-
-{{ range .Nodes }}
-[Peer]
-PublicKey = {{ .PubKey }}
-Endpoint = {{ .Addr }}:{{ $.Port }}
-AllowedIPs = {{ .OverlayAddr }}/32
-{{ end }}`
 
 type wgState struct {
 	iface       string
-	OverlayAddr net.IP
+	client      *wgctrl.Client
+	OverlayAddr net.IPNet
 	Port        int
-	PrivKey     string
-	PubKey      string
+	PrivKey     wgtypes.Key
+	PubKey      wgtypes.Key
 }
 
-var wgPath = "wg"
-var wgQuickPath = "wg-quick"
-
 func newWGConfig(iface string, port int) (*wgState, error) {
-	if err := exec.Command(wgPath).Run(); err != nil {
-		return nil, fmt.Errorf("could not exec wireguard: %s", err)
+	client, err := wgctrl.New()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not instantiate wireguard client")
 	}
 
-	privKey, pubKey, err := wgKeyPair()
+	privKey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
 		return nil, err
 	}
+	pubKey := privKey.PublicKey()
 
 	wgState := wgState{
 		iface:   iface,
+		client:  client,
 		Port:    port,
 		PrivKey: privKey,
 		PubKey:  pubKey,
@@ -69,51 +56,93 @@ func (wg *wgState) assignOverlayAddr(ipnet *net.IPNet, name string) {
 		ip[len(ip)-i] = hb[len(hb)-i]
 	}
 
-	wg.OverlayAddr = net.IP(ip)
-}
-
-func (wg *wgState) writeConf(nodes []node) error {
-	tpl := template.Must(template.New("wgconf").Parse(wgConfTpl))
-	out, err := os.OpenFile(
-		fmt.Sprintf(wgConfPath, wg.iface),
-		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
-		0600,
-	)
-	if err != nil {
-		return err
+	wg.OverlayAddr = net.IPNet{
+		IP:   net.IP(ip),
+		Mask: net.CIDRMask(size, size), // either /32 or /128, depending if ipv4 or ipv6
 	}
-	return tpl.Execute(out, struct {
-		*wgState
-		Nodes []node
-	}{wg, nodes})
 }
 
 func (wg *wgState) downInterface() error {
-	if err := exec.Command(wgPath, "show", wg.iface).Run(); err != nil {
-		return nil // assume a failure means the interface is not there
+	if _, err := wg.client.Device(wg.iface); err != nil {
+		if os.IsNotExist(err) {
+			return nil // device already gone; noop
+		}
+		return err
 	}
-	return exec.Command(wgQuickPath, "down", wg.iface).Run()
+	link, err := netlink.LinkByName(wg.iface)
+	if err != nil {
+		return err
+	}
+	return netlink.LinkDel(link)
 }
 
-func (wg *wgState) upInterface() error {
-	return exec.Command(wgQuickPath, "up", wg.iface).Run()
+func (wg *wgState) setUpInterface(nodes []node) error {
+	if err := wg.createWgInterface(); err != nil {
+		return err
+	}
+
+	peerCfgs, err := wg.nodesToPeerConfigs(nodes)
+	if err != nil {
+		return errors.Wrap(err, "error converting received node information to wireguard format")
+	}
+	wg.client.ConfigureDevice(wg.iface, wgtypes.Config{
+		PrivateKey:   &wg.PrivKey,
+		ListenPort:   &wg.Port,
+		ReplacePeers: true,
+		Peers:        peerCfgs,
+	})
+
+	link, err := netlink.LinkByName(wg.iface)
+	if err != nil {
+		return errors.Wrapf(err, "could not get link information for %s", wg.iface)
+	}
+	netlink.AddrReplace(link, &netlink.Addr{
+		IPNet: &wg.OverlayAddr,
+	})
+	netlink.LinkSetMTU(link, 1420) // TODO: make MTU configurable?
+	netlink.LinkSetUp(link)
+	for _, node := range nodes {
+		netlink.RouteAdd(&netlink.Route{
+			LinkIndex: link.Attrs().Index,
+			Dst:       &node.OverlayAddr,
+			Scope:     netlink.SCOPE_LINK,
+		})
+	}
+
+	return nil
 }
 
-func wgKeyPair() (string, string, error) {
-	cmd := exec.Command(wgPath, "genkey")
-	outPriv := strings.Builder{}
-	cmd.Stdout = &outPriv
-	if err := cmd.Run(); err != nil {
-		return "", "", err
+func (wg *wgState) nodesToPeerConfigs(nodes []node) ([]wgtypes.PeerConfig, error) {
+	peerCfgs := make([]wgtypes.PeerConfig, len(nodes))
+	for i, node := range nodes {
+		pubKey, err := wgtypes.ParseKey(node.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		peerCfgs[i] = wgtypes.PeerConfig{
+			PublicKey:         pubKey,
+			ReplaceAllowedIPs: true,
+			Endpoint: &net.UDPAddr{
+				IP:   node.Addr,
+				Port: wg.Port,
+			},
+			AllowedIPs: []net.IPNet{
+				node.OverlayAddr,
+			},
+		}
 	}
+	return peerCfgs, nil
+}
 
-	cmd = exec.Command(wgPath, "pubkey")
-	outPub := strings.Builder{}
-	cmd.Stdout = &outPub
-	cmd.Stdin = strings.NewReader(outPriv.String())
-	if err := cmd.Run(); err != nil {
-		return "", "", err
+func (wg *wgState) createWgInterface() error {
+	if _, err := wg.client.Device(wg.iface); err == nil {
+		// device already exists, but we are running e2e tests, so we're using the user-mode implementation
+		if _, e2e := os.LookupEnv("WESHER_E2E_TESTS"); e2e {
+			return nil
+		}
 	}
-
-	return strings.TrimSpace(outPriv.String()), strings.TrimSpace(outPub.String()), nil
+	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: wg.iface}}); err != nil {
+		return errors.Wrapf(err, "could not create interface %s", wg.iface)
+	}
+	return nil
 }

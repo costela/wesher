@@ -53,13 +53,7 @@ func main() {
 			for _, node := range nodes {
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
 			}
-			if err := wg.downInterface(); err != nil {
-				logrus.Errorf("could not down interface: %s", err)
-			}
-			if err := wg.writeConf(nodes); err != nil {
-				logrus.Errorf("could not write config: %s", err)
-			}
-			if err := wg.upInterface(); err != nil {
+			if err := wg.setUpInterface(nodes); err != nil {
 				logrus.Errorf("could not up interface: %s", err)
 			}
 			if !config.NoEtcHosts {
@@ -88,7 +82,7 @@ func main() {
 func writeToEtcHosts(nodes []node) error {
 	hosts := make(map[string][]string, len(nodes))
 	for _, n := range nodes {
-		hosts[n.OverlayAddr.String()] = []string{n.Name}
+		hosts[n.OverlayAddr.IP.String()] = []string{n.Name}
 	}
 	hostsFile := &etchosts.EtcHosts{
 		Logger: logrus.StandardLogger(),

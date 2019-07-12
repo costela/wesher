@@ -6,38 +6,6 @@ import (
 	"testing"
 )
 
-func init() {
-	wgPath = "tests/wg"
-	wgQuickPath = "tests/wg-quick"
-}
-
-func Test_wgKeyPair(t *testing.T) {
-	tests := []struct {
-		name    string
-		want    string
-		want1   string
-		wantErr bool
-	}{
-		// see tests/wg for values
-		{"generate fixed values", "ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc=", "VceweY6x/QdGXEQ6frXrSd8CwUAInUmqIc6G/qi8FHo=", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := wgKeyPair()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("wgKeyPair() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("wgKeyPair() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("wgKeyPair() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
-
 func Test_wgState_assignOverlayAddr(t *testing.T) {
 	type args struct {
 		ipnet *net.IPNet
@@ -66,7 +34,7 @@ func Test_wgState_assignOverlayAddr(t *testing.T) {
 			wg := &wgState{}
 			wg.assignOverlayAddr(tt.args.ipnet, tt.args.name)
 
-			if !reflect.DeepEqual(wg.OverlayAddr.String(), tt.want) {
+			if !reflect.DeepEqual(wg.OverlayAddr.IP.String(), tt.want) {
 				t.Errorf("assignOverlayAddr() set = %s, want %s", wg.OverlayAddr, tt.want)
 			}
 		})
