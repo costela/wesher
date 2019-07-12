@@ -10,6 +10,9 @@ go:
 os:
   - linux
 
+services:
+  - docker
+
 matrix:
   allow_failures:
     - go: "master"
@@ -35,9 +38,11 @@ jobs:
   include:
     - stage: cache
       script: go mod download -json
+    - stage: test
+      script: make e2e
     - stage: release
-      script: make
-      go: "1.12.1"
+      script: make build
+      go: "1.12.1" # explicit version to ease reproducibility
       deploy:
         provider: releases
         api_key:
