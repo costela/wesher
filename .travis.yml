@@ -42,8 +42,9 @@ jobs:
       go: "1.12"
       script: make e2e
     - stage: release
-      script: make build
-      go: "1.12.1" # explicit version to ease reproducibility
+      script: make release GOARCHES="amd64 arm arm64"
+      go: "1.12.7" # explicit version to ease reproducibility
+      if: tag IS present
       deploy:
         provider: releases
         api_key:
