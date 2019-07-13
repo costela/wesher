@@ -18,7 +18,7 @@ The following ports must be accessible between all nodes (see [configuration opt
 - 51820 UDP
 - 7946 UDP and TCP
 
-Install `wesher` on all nodes with go >= 1.11:
+Install `wesher` on all nodes with go >= 1.12:
 ```
 $ GO111MODULE=on go get github.com/costela/wesher
 ```
