@@ -1,6 +1,5 @@
-# pushed as costela/wesher-test to speed up testing
-
-FROM golang:1.12-alpine
+# stick to non-alpine so we can reuse build from travis host (avoid libc compat issues)
+FROM golang:1.12
 
 RUN apk update && apk add git make gcc
 RUN go get -d golang.zx2c4.com/wireguard \
