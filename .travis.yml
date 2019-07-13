@@ -38,6 +38,7 @@ jobs:
     - stage: cache
       script: go mod download -json
     - stage: test
+      name: end-to-end
       go: "1.12"
       script: make e2e
     - stage: release
