@@ -10,7 +10,7 @@ build:
 release: build
 	sha256sum wesher-* > wesher.sha256sums
 
-e2e:
+e2e: build
 	tests/e2e.sh
 
 clean:

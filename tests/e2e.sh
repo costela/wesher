@@ -2,12 +2,6 @@
 
 set -e
 
-if [ ! -x ./wesher ]; then 
-    echo "Building wesher for e2e tests"
-    # build inside container to ensure same libc (image is alpine-based)
-    docker run --rm -v $(pwd):/app -v ${GOPATH}/pkg/mod:/go/pkg/mod --entrypoint="" costela/wesher-test go build
-fi
-
 declare -A started_containers
 
 cleanup() {
