@@ -137,6 +137,7 @@ func (wg *wgState) nodesToPeerConfigs(nodes []node) ([]wgtypes.PeerConfig, error
 func (wg *wgState) createWgInterface() error {
 	if _, err := wg.client.Device(wg.iface); err == nil {
 		// device already exists, but we are running e2e tests, so we're using the user-mode implementation
+		// see tests/entrypoint.sh
 		if _, e2e := os.LookupEnv("WESHER_E2E_TESTS"); e2e {
 			return nil
 		}
