@@ -3,7 +3,7 @@
 
 # wesher
 
-`wesher` creates and manages a mesh overlay network across a group of nodes, using [wireguard](https://www.wireguard.com/).
+`wesher` creates and manages an encrypted mesh overlay network across a group of nodes, using [wireguard](https://www.wireguard.com/).
 
 Its main use-case is adding low-maintenance security to public-cloud networks or connecting different cloud providers.
 
@@ -12,36 +12,64 @@ security benefits from wireguard. See [security considerations](#security-consid
 
 ## Quickstart
 
-Before starting, make sure [wireguard](https://www.wireguard.com/) is installed on all nodes.
+0. Before starting:
+   1. make sure the [wireguard](https://www.wireguard.com/) kernel module is installed on all nodes.
 
-The following ports must be accessible between all nodes (see [configuration options](#configuration-options) to change these):
-- 51820 UDP
-- 7946 UDP and TCP
+   2. The following ports must be accessible between all nodes (see [configuration options](#configuration-options) to change these):
+      - 51820 UDP
+      - 7946 UDP and TCP
 
-Install `wesher` on all nodes with go >= 1.12:
+1. Download the latest release for your architecture (assuming `go` is installed):
+
+   ```
+   $ wget -O wesher https://github.com/costela/wesher/releases/latest/download/wesher-$(go env GOARCH)
+   $ chmod a+x wesher
+   ```
+
+2. On the first node:
+   ```
+   # ./wesher
+   ```
+
+   Running the command above on a terminal will currently output a generated cluster key as follows:
+   ```
+   new cluster key generated: XXXXX
+   ```
+   **Note**: the created key will only be shown if running on a terminal, to avoid keys leaking via logs.
+
+3. Lastly, on any further node:
+   ```
+   # wesher --cluster-key XXXXX --join x.x.x.x
+   ```
+
+   Where `XXXXX` is the base64 encoded 256 bit key printed by the step above, and `x.x.x.x` is the hostname or IP of any of the nodes already joined to the mesh cluster.
+
+### Permissions 
+
+Note that `wireguard` - and therefore `wesher` - need root access to work properly.
+
+It is also possible to give the `wesher` binary enough capabilities to manage the `wireguard` interface via:
+```
+# setcap cap_net_admin=eip wesher
+```
+This will enable running as an unprivileged user, but some functionality (like automatic adding peer entries to
+`/etc/hosts`; see [configuration options](#configuration-options) below) will not work.
+
+
+## Installing from source
+
+Alternatively, the latest `wesher` commit can be easily installed from sources:
+
+Preferred:
+```
+$ git clone https://github.com/costela/wesher.git
+$ make
+```
+Or:
 ```
 $ GO111MODULE=on go get github.com/costela/wesher
 ```
-
-On the first node (assuming `$GOPATH/bin` is in the `$PATH`):
-```
-# wesher
-```
-
-Running the command above on a terminal will currently output a generated cluster key, like:
-```
-new cluster key generated: XXXXX
-```
-
-Then, on any further node:
-```
-# wesher --cluster-key XXXXX --join x.x.x.x
-```
-
-Where `XXXXX` is the base64 encoded 256 bit key printed by the step above and `x.x.x.x` is the hostname or IP of any of
-the nodes already joined to the mesh cluster.
-
-*Note*: `wireguard` - and therefore `wesher` - need root access.
+*Note*: the latter will not provide a meaningful output for `--version`.
 
 ## Features
 
@@ -62,15 +90,21 @@ Once set, the cluster key is saved locally and reused on the next startup.
 
 ### Automatic IP address management
 
-The overlay IP address of each node is selected out of a private network (`10.0.0.0/8` by default) and is consistently
-hashed based on the hostname, meaning a host will always receive the same overlay IP address (see [limitations](#overlay-ip-collisions)
-of this approach below). The hostname is also used by the underlying cluster management (using [memberlist](https://github.com/hashicorp/memberlist))
+The overlay IP address of each node is automatically selected out of a private network (`10.0.0.0/8` by default; MUST be different from the underlying network used for cluster communication) and is consistently hashed based on the peer's hostname.
+
+The use of consistent hashing means a given node will always receive the same overlay IP address (see [limitations](#overlay-ip-collisions)
+of this approach below).
+
+**Note**: the node's hostname is also used by the underlying cluster management (using [memberlist](https://github.com/hashicorp/memberlist))
 to identify nodes and must therefore be unique in the cluster.
 
-To ease intra-node communication, `wesher` also adds entries to `/etc/hosts` for each other node. See [configuration](#configuration-options)
-below for how to disable this behavior.
+### Automatic /etc/hosts management
 
-### Restoring state
+To ease intra-node communication, `wesher` also adds entries to `/etc/hosts` for each peer in the mesh. This enables using the nodes' hostnames to ensure communication over the secured overlay network (assuming `files` is the first entry for `hosts` in `/etc/nsswitch.conf`).
+
+See [configuration](#configuration-options) below for how to disable this behavior.
+
+### Seamless restarts
 
 If a node in the cluster is restarted, it will attempt to re-join the last-known nodes using the same cluster key.
 This means a restart requires no manual intervention.
