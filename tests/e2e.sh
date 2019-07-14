@@ -56,6 +56,8 @@ test_node_restart() {
     docker stop test2-orig
     docker start test2-orig
 
+    sleep 3
+
     docker exec test1-orig ping -c1 -W1 test2 || (docker logs test1-orig; docker logs test2-orig; false)
 
     stop_test_container test2-orig
