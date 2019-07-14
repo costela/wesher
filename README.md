@@ -55,6 +55,18 @@ It is also possible to give the `wesher` binary enough capabilities to manage th
 This will enable running as an unprivileged user, but some functionality (like automatic adding peer entries to
 `/etc/hosts`; see [configuration options](#configuration-options) below) will not work.
 
+### (optional) systemd integration
+
+A minimal `systemd` unit file is provided under the `dist` folder and can be copied to `/etc/systemd/system`:
+```
+# wget -O /etc/systemd/system/wesher.service https://raw.githubusercontent.com/costela/wesher/master/dist/wesher.service
+# systemctl daemon-reload
+# systemctl enable wesher
+```
+The provided unit file assumes `wesher` is installed to `/usr/loca/sbin`.
+
+Note that, as mentioned above, the initial cluster key will not be displayed in the journal.
+It can either be initialized by running `wesher` manually once, or by pre-seeding via `/etc/default/wesher` as the `WESHER_CLUSTER_KEY` environment var (see [configuration options](#configuration-options) below).
 
 ## Installing from source
 
