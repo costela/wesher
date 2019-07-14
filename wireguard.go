@@ -77,8 +77,8 @@ func (wg *wgState) downInterface() error {
 }
 
 func (wg *wgState) setUpInterface(nodes []node) error {
-	if err := wg.createWgInterface(); err != nil {
-		return err
+	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: wg.iface}}); err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "could not create interface %s", wg.iface)
 	}
 
 	peerCfgs, err := wg.nodesToPeerConfigs(nodes)
@@ -132,18 +132,4 @@ func (wg *wgState) nodesToPeerConfigs(nodes []node) ([]wgtypes.PeerConfig, error
 		}
 	}
 	return peerCfgs, nil
-}
-
-func (wg *wgState) createWgInterface() error {
-	if _, err := wg.client.Device(wg.iface); err == nil {
-		// device already exists, but we are running e2e tests, so we're using the user-mode implementation
-		// see tests/entrypoint.sh
-		if _, e2e := os.LookupEnv("WESHER_E2E_TESTS"); e2e {
-			return nil
-		}
-	}
-	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: wg.iface}}); err != nil {
-		return errors.Wrapf(err, "could not create interface %s", wg.iface)
-	}
-	return nil
 }
