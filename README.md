@@ -3,7 +3,7 @@
 
 # wesher
 
-<img src="https://raw.githubusercontent.com/costela/wesher/master/dist/wesher.svg" width="200"/>
+<img src="./dist/wesher.svg" width="300"/>
 
 `wesher` creates and manages an encrypted mesh overlay network across a group of nodes, using [wireguard](https://www.wireguard.com/).
 
