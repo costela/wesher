@@ -3,6 +3,8 @@
 
 # wesher
 
+<img src="https://raw.githubusercontent.com/costela/wesher/master/dist/wesher.svg" width="200"/>
+
 `wesher` creates and manages an encrypted mesh overlay network across a group of nodes, using [wireguard](https://www.wireguard.com/).
 
 Its main use-case is adding low-maintenance security to public-cloud networks or connecting different cloud providers.
