@@ -47,6 +47,21 @@ test_3_node_up() {
     stop_test_container test1-orig
 }
 
+test_node_restart() {
+    run_test_container test1-orig test1 --init
+    run_test_container test2-orig test2 --join test1-orig
+
+    sleep 3
+
+    docker stop test2-orig
+    docker start test2-orig
+
+    docker exec test1-orig ping -c1 -W1 test2 || (docker logs test1-orig; docker logs test2-orig; false)
+
+    stop_test_container test2-orig
+    stop_test_container test1-orig
+}
+
 for test_func in $(declare -F | grep -Eo '\<test_.*$'); do
     echo "--- Running $test_func:"
     $test_func
