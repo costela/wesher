@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 EnvironmentFile=-/etc/default/wesher
-ExecStart=/usr/loca/sbin/wesher
+ExecStart=/usr/local/sbin/wesher
 Restart=on-failure
 Type=simple
 
