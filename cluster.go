@@ -64,10 +64,28 @@ func newCluster(config *config, wg *wgState) (*cluster, error) {
 	}
 	state.ClusterKey = clusterKey
 
+	// we check for mutual exclusion in config.go
+	bindAddr := config.BindAddr
+	if config.BindIface != "" {
+		iface, err := net.InterfaceByName(config.BindIface)
+		if err != nil {
+			return nil, err
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil, err
+		}
+		if len(addrs) > 0 {
+			if addr, ok := addrs[0].(*net.IPNet); ok {
+				bindAddr = addr.IP.String()
+			}
+		}
+	}
+
 	mlConfig := memberlist.DefaultWANConfig()
 	mlConfig.LogOutput = logrus.StandardLogger().WriterLevel(logrus.DebugLevel)
 	mlConfig.SecretKey = clusterKey
-	mlConfig.BindAddr = config.BindAddr
+	mlConfig.BindAddr = bindAddr
 	mlConfig.BindPort = config.ClusterPort
 	mlConfig.AdvertisePort = config.ClusterPort
 	if config.UseIPAsName && config.BindAddr != "0.0.0.0" {
