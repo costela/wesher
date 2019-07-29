@@ -55,6 +55,7 @@ func main() {
 			}
 			if err := wg.setUpInterface(nodes); err != nil {
 				logrus.Errorf("could not up interface: %s", err)
+				wg.downInterface()
 			}
 			if !config.NoEtcHosts {
 				if err := writeToEtcHosts(nodes); err != nil {
