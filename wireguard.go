@@ -85,22 +85,31 @@ func (wg *wgState) setUpInterface(nodes []node) error {
 	if err != nil {
 		return errors.Wrap(err, "error converting received node information to wireguard format")
 	}
-	wg.client.ConfigureDevice(wg.iface, wgtypes.Config{
+	if err := wg.client.ConfigureDevice(wg.iface, wgtypes.Config{
 		PrivateKey:   &wg.PrivKey,
 		ListenPort:   &wg.Port,
 		ReplacePeers: true,
 		Peers:        peerCfgs,
-	})
+	}); err != nil {
+		return errors.Wrapf(err, "could not set wireguard configuration for %s", wg.iface)
+	}
 
 	link, err := netlink.LinkByName(wg.iface)
 	if err != nil {
 		return errors.Wrapf(err, "could not get link information for %s", wg.iface)
 	}
-	netlink.AddrReplace(link, &netlink.Addr{
+	if err := netlink.AddrReplace(link, &netlink.Addr{
 		IPNet: &wg.OverlayAddr,
-	})
-	netlink.LinkSetMTU(link, 1420) // TODO: make MTU configurable?
-	netlink.LinkSetUp(link)
+	}); err != nil {
+		return errors.Wrapf(err, "could not set address for %s", wg.iface)
+	}
+	// TODO: make MTU configurable?
+	if err := netlink.LinkSetMTU(link, 1420); err != nil {
+		return errors.Wrapf(err, "could not set MTU for %s", wg.iface)
+	}
+	if err := netlink.LinkSetUp(link); err != nil {
+		return errors.Wrapf(err, "could not enable interface %s", wg.iface)
+	}
 	for _, node := range nodes {
 		netlink.RouteAdd(&netlink.Route{
 			LinkIndex: link.Attrs().Index,
