@@ -21,7 +21,7 @@ security benefits from wireguard. See [security considerations](#security-consid
       - 51820 UDP
       - 7946 UDP and TCP
 
-1. Download the latest release for your architecture (assuming `go` is installed):
+1. Download the latest release for your architecture:
 
    ```
    $ wget -O wesher https://github.com/costela/wesher/releases/latest/download/wesher-$(go env GOARCH)
