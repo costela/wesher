@@ -2,6 +2,8 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da h1:8GUt8eRujhVEGZFFEjBj46YV4rDjvGrNxb0KMWYkL2I=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
+github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
+github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -41,7 +43,6 @@ github.com/mdlayher/netlink v0.0.0-20190409211403-11939a169225/go.mod h1:eQB3mZE
 github.com/mdlayher/netlink v0.0.0-20190513144208-ba284d510044/go.mod h1:gOrA34zDL0K3RsACQe54bDYLF/CeFspQ9m5DOycycQ8=
 github.com/mdlayher/netlink v0.0.0-20190614145538-d8264f87dbe3 h1:3IPcWjiboJFnnvHeXxT4pYw33BiPJn/DC5BKhcGEbGk=
 github.com/mdlayher/netlink v0.0.0-20190614145538-d8264f87dbe3/go.mod h1:ISujvOTprADlNr00kvJIu0d23q57wk2NSV/PT/TEk4E=
-github.com/mdlayher/netlink v0.0.0-20190617153422-f82a9b10b2bc h1:deLjDmcgzsCAO+7m2aeuyhQCqvn1LuCCSMLWUARnad8=
 github.com/microsoft/go-winio v0.4.12 h1:3vDRRsUnj2dKE7QKoedntu9hbuD8gzaVd2E2UZioqx4=
 github.com/microsoft/go-winio v0.4.12/go.mod h1:kcIxxtKZE55DEncT/EOvFiygPobhUWpSDqDb47poQOU=
 github.com/miekg/dns v1.0.14 h1:9jZdLNd/P4+SfEJ0TNyxYpsK8N4GtfylBLqtbYN1sbA=

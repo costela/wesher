@@ -5,6 +5,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/cenkalti/backoff"
 
 	"github.com/sirupsen/logrus"
 
@@ -39,7 +42,13 @@ func main() {
 	}
 
 	nodec, errc := cluster.members() // avoid deadlocks by starting before join
-	if err := cluster.join(config.Join); err != nil {
+	if err := backoff.RetryNotify(
+		func() error { return cluster.join(config.Join) },
+		backoff.NewExponentialBackOff(),
+		func(err error, dur time.Duration) {
+			logrus.Errorf("could not join cluster, retrying in %s: %s", dur, err)
+		},
+	); err != nil {
 		logrus.Fatalf("could not join cluster: %s", err)
 	}
 

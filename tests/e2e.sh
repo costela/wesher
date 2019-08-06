@@ -64,6 +64,21 @@ test_node_restart() {
     stop_test_container test1-orig
 }
 
+test_cluster_simultaneous_start() {
+    run_test_container test1-orig test1 --join test2-orig,test3-orig
+    run_test_container test2-orig test2 --join test1-orig,test3-orig
+    run_test_container test3-orig test3 --join test1-orig,test2-orig
+
+    sleep 3
+
+    docker exec test1-orig ping -c1 -W1 test2 || (docker logs test1-orig; docker logs test2-orig; false)
+    docker exec test1-orig ping -c1 -W1 test3 || (docker logs test1-orig; docker logs test3-orig; false)
+
+    stop_test_container test3-orig
+    stop_test_container test2-orig
+    stop_test_container test1-orig
+}
+
 for test_func in $(declare -F | grep -Eo '\<test_.*$'); do
     echo "--- Running $test_func:"
     $test_func
