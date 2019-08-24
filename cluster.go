@@ -101,8 +101,10 @@ func newCluster(config *config, wg *wgState) (*cluster, error) {
 		localName: ml.LocalNode().Name,
 		ml:        ml,
 		wg:        wg,
-		events:    make(chan memberlist.NodeEvent, 1),
-		state:     state,
+		// The big channel buffer is a work-around for https://github.com/hashicorp/memberlist/issues/23
+		// More than this many simultaneous events will deadlock cluster.members()
+		events: make(chan memberlist.NodeEvent, 100),
+		state:  state,
 	}
 	mlConfig.Conflict = &cluster
 	mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: cluster.events}
