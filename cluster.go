@@ -243,7 +243,7 @@ func (c *cluster) saveState() error {
 		return err
 	}
 
-	return ioutil.WriteFile(statePath, stateOut, 0700)
+	return ioutil.WriteFile(statePath, stateOut, 0600)
 }
 
 func loadState(cs *ClusterState) {
