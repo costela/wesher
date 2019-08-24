@@ -5,7 +5,7 @@ set -e
 declare -A started_containers
 
 cleanup() {
-    if [ ! -z "${started_containers[@]}" ]; then
+    if [ ${#started_containers[@]} -gt 0 ]; then
         echo "Stopping all remaining containers: ${started_containers[@]}"
         docker container rm -f ${started_containers[@]}
     fi
@@ -42,6 +42,27 @@ test_3_node_up() {
     docker exec test1-orig ping -c1 -W1 test2 || (docker logs test1-orig; docker logs test2-orig; false)
     docker exec test1-orig ping -c1 -W1 test3 || (docker logs test1-orig; docker logs test3-orig; false)
 
+    stop_test_container test3-orig
+    stop_test_container test2-orig
+    stop_test_container test1-orig
+}
+
+test_5_node_up() {
+    run_test_container test1-orig test1 --init
+    run_test_container test2-orig test2 --join test1-orig
+    run_test_container test3-orig test3 --join test1-orig
+    run_test_container test4-orig test4 --join test1-orig
+    run_test_container test5-orig test5 --join test1-orig
+
+    sleep 5
+
+    docker exec test1-orig ping -c1 -W1 test2 || (docker logs test1-orig; docker logs test2-orig; false)
+    docker exec test1-orig ping -c1 -W1 test3 || (docker logs test1-orig; docker logs test3-orig; false)
+    docker exec test1-orig ping -c1 -W1 test4 || (docker logs test1-orig; docker logs test4-orig; false)
+    docker exec test1-orig ping -c1 -W1 test5 || (docker logs test1-orig; docker logs test5-orig; false)
+
+    stop_test_container test5-orig
+    stop_test_container test4-orig
     stop_test_container test3-orig
     stop_test_container test2-orig
     stop_test_container test1-orig
