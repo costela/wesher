@@ -1,6 +1,6 @@
 VERSION := $(shell git describe --tags --dirty --always)
 
-GOFLAGS := -ldflags "-X main.version=$(VERSION)" -gcflags=all=-trimpath=$(PWD) -asmflags=all=-trimpath=$(PWD)
+GOFLAGS := -ldflags "-X main.version=$(VERSION)" -trimpath
 
 GOARCHES := $(shell go env GOARCH)
 
