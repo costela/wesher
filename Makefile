@@ -2,7 +2,7 @@ export CGO_ENABLED=0
 
 VERSION := $(shell git describe --tags --dirty --always)
 
-GOFLAGS := -ldflags "-X main.version=$(VERSION)" -trimpath
+GOFLAGS := -ldflags "-X main.version=$(VERSION) -buildid=" -trimpath
 
 GOARCHES := $(shell go env GOARCH)
 
