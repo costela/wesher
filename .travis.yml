@@ -43,7 +43,7 @@ jobs:
       script: make e2e
     - stage: release
       script: make release GOARCHES="amd64 arm arm64"
-      go: "1.13.1" # explicit version to ease reproducibility
+      go: "1.13.4" # explicit version to ease reproducibility
       if: tag IS present
       deploy:
         provider: releases
