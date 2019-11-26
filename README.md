@@ -72,18 +72,22 @@ It can either be initialized by running `wesher` manually once, or by pre-seedin
 
 ## Installing from source
 
-Alternatively, the latest `wesher` commit can be easily installed from sources:
+There are a couple of ways of installing `wesher` from sources:
 
 Preferred:
 ```
 $ git clone https://github.com/costela/wesher.git
+$ cd wesher
 $ make
 ```
-Or:
+This method can build a bit-by-bit identical binary to the released ones, assuming the same go version is used to build its respective git tag.
+
+
+Alternatively:
 ```
 $ GO111MODULE=on go get github.com/costela/wesher
 ```
-*Note*: the latter will not provide a meaningful output for `--version`.
+*Note*: this method will not provide a meaningful output for `--version`.
 
 ## Features
 
