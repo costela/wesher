@@ -1,3 +1,5 @@
+export CGO_ENABLED=0
+
 VERSION := $(shell git describe --tags --dirty --always)
 
 GOFLAGS := -ldflags "-X main.version=$(VERSION)" -trimpath
