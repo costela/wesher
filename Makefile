@@ -10,7 +10,7 @@ build:
 	$(foreach GOARCH,$(GOARCHES),GOARCH=$(GOARCH) go build ${GOFLAGS} -o wesher$(if $(filter-out $(GOARCH), $(GOARCHES)),-$(GOARCH));)
 
 release: build
-	sha256sum wesher-* > wesher.sha256sums
+	sha256sum wesher-* | tee wesher.sha256sums
 
 e2e: build
 	tests/e2e.sh
