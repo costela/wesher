@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/memberlist v0.1.5
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/mattn/go-isatty v0.0.10
+	github.com/mattn/go-isatty v0.0.11
 	github.com/mdlayher/genetlink v0.0.0-20190828143517-e35f2bf499b9 // indirect
 	github.com/mdlayher/netlink v0.0.0-20190906145618-4e5dd4017dae // indirect
 	github.com/miekg/dns v1.1.16 // indirect
