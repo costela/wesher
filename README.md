@@ -65,7 +65,7 @@ A minimal `systemd` unit file is provided under the `dist` folder and can be cop
 # systemctl daemon-reload
 # systemctl enable wesher
 ```
-The provided unit file assumes `wesher` is installed to `/usr/loca/sbin`.
+The provided unit file assumes `wesher` is installed to `/usr/local/sbin`.
 
 Note that, as mentioned above, the initial cluster key will not be displayed in the journal.
 It can either be initialized by running `wesher` manually once, or by pre-seeding via `/etc/default/wesher` as the `WESHER_CLUSTER_KEY` environment var (see [configuration options](#configuration-options) below).
