@@ -33,11 +33,12 @@ security benefits from wireguard. See [security considerations](#security-consid
    # ./wesher
    ```
 
-   Running the command above on a terminal will currently output a generated cluster key as follows:
+   This will start the wesher daemon in the foreground and - when running on a terminal - will currently output a generated cluster key as follows:
    ```
    new cluster key generated: XXXXX
    ```
-   **Note**: the created key will only be shown if running on a terminal, to avoid keys leaking via logs.
+
+   **Note**: to avoid accidentally leaking it in the logs, the created key will _only_ be displayed if running on a terminal. When started via other means (e.g.: desktop session manager or init system), the key can be retreived with `grep ClusterKey /var/lib/wesher/state.json`.
 
 3. Lastly, on any further node:
    ```
@@ -99,7 +100,7 @@ several nodes across multiple cloud providers, or simply to secure inter-node co
 ### Automatic Key management
 
 The wireguard private keys are created on startup for each node and the respective public keys are then broadcast
-across the cluster. 
+across the cluster.
 
 The control-plane cluster communication is secured with a pre-shared AES-256 key. This key can be be automatically
 created during startup of the first node in a cluster, or it can be provided (see [configuration](#configuration-options)).
