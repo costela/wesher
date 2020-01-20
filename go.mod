@@ -22,7 +22,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stevenroose/gonfig v0.1.4
 	github.com/stretchr/testify v1.4.0 // indirect
-	github.com/vishvananda/netlink v1.0.0
+	github.com/vishvananda/netlink v1.1.0
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	golang.org/x/crypto v0.0.0-20190927123631-a832865fa7ad // indirect
 	golang.org/x/net v0.0.0-20190930134127-c5a3c61f89f3 // indirect
