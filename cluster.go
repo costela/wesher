@@ -14,13 +14,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/mattn/go-isatty"
-
 	"github.com/hashicorp/errwrap"
-
 	"github.com/hashicorp/go-multierror"
-
 	"github.com/hashicorp/memberlist"
+	"github.com/mattn/go-isatty"
 	"github.com/sirupsen/logrus"
 )
 

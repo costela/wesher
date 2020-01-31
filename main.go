@@ -8,10 +8,8 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-
-	"github.com/sirupsen/logrus"
-
 	"github.com/costela/wesher/etchosts"
+	"github.com/sirupsen/logrus"
 )
 
 var version = "dev"
@@ -27,18 +25,18 @@ func main() {
 	}
 	logLevel, err := logrus.ParseLevel(config.LogLevel)
 	if err != nil {
-		logrus.Fatalf("could not parse loglevel: %s", err)
+		logrus.WithError(err).Fatal("could not parse loglevel")
 	}
 	logrus.SetLevel(logLevel)
 
 	wg, err := newWGConfig(config.Interface, config.WireguardPort)
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
 
 	cluster, err := newCluster(config, wg)
 	if err != nil {
-		logrus.Fatalf("could not create cluster: %s", err)
+		logrus.WithError(err).Fatal("could not create cluster")
 	}
 
 	nodec, errc := cluster.members() // avoid deadlocks by starting before join
@@ -46,10 +44,10 @@ func main() {
 		func() error { return cluster.join(config.Join) },
 		backoff.NewExponentialBackOff(),
 		func(err error, dur time.Duration) {
-			logrus.Errorf("could not join cluster, retrying in %s: %s", dur, err)
+			logrus.WithError(err).Errorf("could not join cluster, retrying in %s", dur)
 		},
 	); err != nil {
-		logrus.Fatalf("could not join cluster: %s", err)
+		logrus.WithError(err).Fatal("could not join cluster")
 	}
 
 	incomingSigs := make(chan os.Signal, 1)
@@ -63,26 +61,26 @@ func main() {
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
 			}
 			if err := wg.setUpInterface(nodes); err != nil {
-				logrus.Errorf("could not up interface: %s", err)
+				logrus.WithError(err).Error("could not up interface")
 				wg.downInterface()
 			}
 			if !config.NoEtcHosts {
 				if err := writeToEtcHosts(nodes); err != nil {
-					logrus.Errorf("could not write hosts entries: %s", err)
+					logrus.WithError(err).Error("could not write hosts entries")
 				}
 			}
 		case errs := <-errc:
-			logrus.Errorf("could not receive node info: %s", errs)
+			logrus.WithError(errs).Error("could not receive node info")
 		case <-incomingSigs:
 			logrus.Info("terminating...")
 			cluster.leave()
 			if !config.NoEtcHosts {
 				if err := writeToEtcHosts(nil); err != nil {
-					logrus.Errorf("could not remove stale hosts entries: %s", err)
+					logrus.WithError(err).Error("could not remove stale hosts entries")
 				}
 			}
 			if err := wg.downInterface(); err != nil {
-				logrus.Errorf("could not down interface: %s", err)
+				logrus.WithError(err).Error("could not down interface")
 			}
 			os.Exit(0)
 		}
