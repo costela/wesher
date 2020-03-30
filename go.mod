@@ -19,7 +19,7 @@ require (
 	github.com/mdlayher/netlink v0.0.0-20190906145618-4e5dd4017dae // indirect
 	github.com/miekg/dns v1.1.16 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.5.0
 	github.com/stevenroose/gonfig v0.1.4
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/vishvananda/netlink v1.1.0
