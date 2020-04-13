@@ -20,7 +20,7 @@ require (
 	github.com/miekg/dns v1.1.16 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0
-	github.com/stevenroose/gonfig v0.1.4
+	github.com/stevenroose/gonfig v0.1.5
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/vishvananda/netlink v1.1.0
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
