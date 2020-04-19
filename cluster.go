@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -14,11 +13,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/memberlist"
 	"github.com/mattn/go-isatty"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/multierr"
 )
 
 // ClusterState keeps track of information needed to rejoin the cluster
@@ -149,7 +148,7 @@ func decodeNodeMeta(b []byte) (nodeMeta, error) {
 	// PSK can cause.
 	nm := nodeMeta{}
 	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(&nm); err != nil {
-		return nm, errwrap.Wrapf("could not decode: {{err}}", err)
+		return nm, errors.Wrap(err, "could not decode node meta")
 	}
 	return nm, nil
 }
@@ -172,7 +171,7 @@ func (c *cluster) join(addrs []string) error {
 func (c *cluster) leave() {
 	c.saveState()
 	c.ml.Leave(10 * time.Second)
-	c.ml.Shutdown() // ignore errors
+	c.ml.Shutdown() //nolint: errcheck
 }
 
 func (c *cluster) members() (<-chan []node, <-chan error) {
@@ -202,7 +201,7 @@ func (c *cluster) members() (<-chan []node, <-chan error) {
 				}
 				meta, err := decodeNodeMeta(n.Meta)
 				if err != nil {
-					errs = multierror.Append(errs, err)
+					errs = multierr.Append(errs, err)
 					continue
 				}
 				nodes = append(nodes, node{
@@ -261,5 +260,4 @@ func loadState(cs *ClusterState) {
 	} else {
 		*cs = *csTmp
 	}
-	return
 }
