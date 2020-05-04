@@ -13,7 +13,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mattn/go-isatty v0.0.12
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.5.0
+	github.com/sirupsen/logrus v1.6.0
 	github.com/stevenroose/gonfig v0.1.5
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/vishvananda/netlink v1.1.0
