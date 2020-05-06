@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -98,37 +96,6 @@ func (c *cluster) GetBroadcasts(overhead, limit int) [][]byte { return nil }
 func (c *cluster) LocalState(join bool) []byte                { return nil }
 func (c *cluster) MergeRemoteState(buf []byte, join bool)     {}
 
-type nodeMeta struct {
-	OverlayAddr net.IPNet
-	PubKey      string
-}
-
-func (c *cluster) NodeMeta(limit int) []byte {
-	buf := &bytes.Buffer{}
-	if err := gob.NewEncoder(buf).Encode(nodeMeta{
-		OverlayAddr: c.wg.OverlayAddr,
-		PubKey:      c.wg.PubKey.String(),
-	}); err != nil {
-		logrus.Errorf("could not encode local state: %s", err)
-		return nil
-	}
-	if buf.Len() > limit {
-		logrus.Errorf("could not fit node metadata into %d bytes", limit)
-		return nil
-	}
-	return buf.Bytes()
-}
-
-func decodeNodeMeta(b []byte) (nodeMeta, error) {
-	// TODO: we blindly trust the info we get from the peers; We should be more defensive to limit the damage a leaked
-	// PSK can cause.
-	nm := nodeMeta{}
-	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(&nm); err != nil {
-		return nm, errors.Wrap(err, "could not decode node meta")
-	}
-	return nm, nil
-}
-
 func (c *cluster) join(addrs []string) error {
 	if len(addrs) == 0 {
 		for _, n := range c.state.Nodes {
@@ -195,16 +162,6 @@ func (c *cluster) members() (<-chan []node, <-chan error) {
 		}
 	}()
 	return changes, errc
-}
-
-type node struct {
-	Name string
-	Addr net.IP
-	nodeMeta
-}
-
-func (n *node) String() string {
-	return n.Addr.String()
 }
 
 func computeClusterKey(state *ClusterState, clusterKey []byte) ([]byte, error) {
