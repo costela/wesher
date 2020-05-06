@@ -92,7 +92,7 @@ func (c *cluster) NotifyConflict(node, other *memberlist.Node) {
 	logrus.Errorf("node name conflict detected: %s", other.Name)
 }
 
-// none if these are used
+// none of these are used
 func (c *cluster) NotifyMsg([]byte)                           {}
 func (c *cluster) GetBroadcasts(overhead, limit int) [][]byte { return nil }
 func (c *cluster) LocalState(join bool) []byte                { return nil }
