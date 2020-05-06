@@ -2,6 +2,7 @@ package main // import "github.com/costela/wesher"
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -34,10 +35,19 @@ func main() {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
 
-	cluster, err := newCluster(config, wg)
+	getMeta := func(limit int) []byte {
+		return encodeNodeMeta(nodeMeta{
+			OverlayAddr: wg.OverlayAddr,
+			PubKey:      wg.PubKey.String(),
+		}, limit)
+	}
+
+	cluster, err := newCluster(config, getMeta)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
+	wg.assignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.localName)
+	cluster.update()
 
 	nodec, errc := cluster.members() // avoid deadlocks by starting before join
 	if err := backoff.RetryNotify(
