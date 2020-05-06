@@ -15,7 +15,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"go.uber.org/multierr"
 )
 
 // ClusterState keeps track of information needed to rejoin the cluster
@@ -120,9 +119,8 @@ func (c *cluster) update() {
 	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 }
 
-func (c *cluster) members() (<-chan []node, <-chan error) {
+func (c *cluster) members() <-chan []node {
 	changes := make(chan []node)
-	errc := make(chan error, 1)
 	go func() {
 		for {
 			event := <-c.events
@@ -140,31 +138,22 @@ func (c *cluster) members() (<-chan []node, <-chan error) {
 			}
 
 			nodes := make([]node, 0)
-			var errs error
 			for _, n := range c.ml.Members() {
 				if n.Name == c.localName {
 					continue
 				}
-				meta, err := decodeNodeMeta(n.Meta)
-				if err != nil {
-					errs = multierr.Append(errs, err)
-					continue
-				}
 				nodes = append(nodes, node{
-					Name:     n.Name,
-					Addr:     n.Addr,
-					nodeMeta: meta,
+					Name: n.Name,
+					Addr: n.Addr,
+					Meta: n.Meta,
 				})
 			}
 			c.state.Nodes = nodes
 			changes <- nodes
-			if errs != nil {
-				errc <- errs
-			}
 			c.saveState()
 		}
 	}()
-	return changes, errc
+	return changes
 }
 
 func computeClusterKey(state *ClusterState, clusterKey []byte) ([]byte, error) {
