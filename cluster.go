@@ -34,11 +34,9 @@ type cluster struct {
 
 const statePath = "/var/lib/wesher/state.json"
 
-func newCluster(config *config, getMeta func(int) []byte) (*cluster, error) {
-	clusterKey := config.ClusterKey
-
+func newCluster(init bool, clusterKey []byte, bindAddr string, bindIface string, bindPort int, useIPAsName bool, getMeta func(int) []byte) (*cluster, error) {
 	state := &ClusterState{}
-	if !config.Init {
+	if !init {
 		loadState(state)
 	}
 
@@ -47,7 +45,7 @@ func newCluster(config *config, getMeta func(int) []byte) (*cluster, error) {
 		return nil, err
 	}
 
-	bindAddr, err := computeBindAddr(config.BindAddr, config.BindIface)
+	bindAddr, err = computeBindAddr(bindAddr, bindIface)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +54,10 @@ func newCluster(config *config, getMeta func(int) []byte) (*cluster, error) {
 	mlConfig.LogOutput = logrus.StandardLogger().WriterLevel(logrus.DebugLevel)
 	mlConfig.SecretKey = clusterKey
 	mlConfig.BindAddr = bindAddr
-	mlConfig.BindPort = config.ClusterPort
-	mlConfig.AdvertisePort = config.ClusterPort
-	if config.UseIPAsName && config.BindAddr != "0.0.0.0" {
-		mlConfig.Name = config.BindAddr
+	mlConfig.BindPort = bindPort
+	mlConfig.AdvertisePort = bindPort
+	if useIPAsName && bindAddr != "0.0.0.0" {
+		mlConfig.Name = bindAddr
 	}
 
 	ml, err := memberlist.Create(mlConfig)
