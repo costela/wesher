@@ -49,7 +49,7 @@ func main() {
 	wg.assignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.localName)
 	cluster.update()
 
-	nodec, errc := cluster.members() // avoid deadlocks by starting before join
+	nodec := cluster.members() // avoid deadlocks by starting before join
 	if err := backoff.RetryNotify(
 		func() error { return cluster.join(config.Join) },
 		backoff.NewExponentialBackOff(),
@@ -65,9 +65,17 @@ func main() {
 	logrus.Debug("waiting for cluster events")
 	for {
 		select {
-		case nodes := <-nodec:
+		case rawNodes := <-nodec:
 			logrus.Info("cluster members:\n")
-			for _, node := range nodes {
+			nodes := make([]node, 0)
+			for _, node := range rawNodes {
+				meta, err := decodeNodeMeta(node.Meta)
+				if err != nil {
+					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
+					continue
+				}
+				node.nodeMeta = meta
+				nodes = append(nodes, node)
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
 			}
 			if err := wg.setUpInterface(nodes); err != nil {
@@ -79,8 +87,6 @@ func main() {
 					logrus.WithError(err).Error("could not write hosts entries")
 				}
 			}
-		case errs := <-errc:
-			logrus.WithError(errs).Error("could not receive node info")
 		case <-incomingSigs:
 			logrus.Info("terminating...")
 			cluster.leave()

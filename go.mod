@@ -16,7 +16,6 @@ require (
 	github.com/stevenroose/gonfig v0.1.5
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/vishvananda/netlink v1.1.0
-	go.uber.org/multierr v1.5.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200324154536-ceff61240acf
 )
 

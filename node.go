@@ -19,6 +19,7 @@ type nodeMeta struct {
 type node struct {
 	Name string
 	Addr net.IP
+	Meta []byte
 	nodeMeta
 }
 
