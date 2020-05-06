@@ -27,14 +27,14 @@ type ClusterState struct {
 type cluster struct {
 	localName string // used to avoid LocalNode(); should not change
 	ml        *memberlist.Memberlist
-	wg        *wgState
+	getMeta   func(int) []byte
 	state     *ClusterState
 	events    chan memberlist.NodeEvent
 }
 
 const statePath = "/var/lib/wesher/state.json"
 
-func newCluster(config *config, wg *wgState) (*cluster, error) {
+func newCluster(config *config, getMeta func(int) []byte) (*cluster, error) {
 	clusterKey := config.ClusterKey
 
 	state := &ClusterState{}
@@ -70,7 +70,7 @@ func newCluster(config *config, wg *wgState) (*cluster, error) {
 	cluster := cluster{
 		localName: ml.LocalNode().Name,
 		ml:        ml,
-		wg:        wg,
+		getMeta:   getMeta,
 		// The big channel buffer is a work-around for https://github.com/hashicorp/memberlist/issues/23
 		// More than this many simultaneous events will deadlock cluster.members()
 		events: make(chan memberlist.NodeEvent, 100),
@@ -80,14 +80,15 @@ func newCluster(config *config, wg *wgState) (*cluster, error) {
 	mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: cluster.events}
 	mlConfig.Delegate = &cluster
 
-	wg.assignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.localName)
-
-	ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 	return &cluster, nil
 }
 
 func (c *cluster) NotifyConflict(node, other *memberlist.Node) {
 	logrus.Errorf("node name conflict detected: %s", other.Name)
+}
+
+func (c *cluster) NodeMeta(limit int) []byte {
+	return c.getMeta(limit)
 }
 
 // none of these are used
@@ -115,6 +116,10 @@ func (c *cluster) leave() {
 	c.saveState()
 	c.ml.Leave(10 * time.Second)
 	c.ml.Shutdown() //nolint: errcheck
+}
+
+func (c *cluster) update() {
+	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 }
 
 func (c *cluster) members() (<-chan []node, <-chan error) {

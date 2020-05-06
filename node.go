@@ -26,12 +26,9 @@ func (n *node) String() string {
 	return n.Addr.String()
 }
 
-func (c *cluster) NodeMeta(limit int) []byte {
+func encodeNodeMeta(nm nodeMeta, limit int) []byte {
 	buf := &bytes.Buffer{}
-	if err := gob.NewEncoder(buf).Encode(nodeMeta{
-		OverlayAddr: c.wg.OverlayAddr,
-		PubKey:      c.wg.PubKey.String(),
-	}); err != nil {
+	if err := gob.NewEncoder(buf).Encode(nm); err != nil {
 		logrus.Errorf("could not encode local state: %s", err)
 		return nil
 	}
