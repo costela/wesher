@@ -43,39 +43,15 @@ func newCluster(config *config, wg *wgState) (*cluster, error) {
 	if !config.Init {
 		loadState(state)
 	}
-	if len(clusterKey) == 0 {
-		clusterKey = state.ClusterKey
+
+	clusterKey, err := computeClusterKey(state, clusterKey)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(clusterKey) == 0 {
-		clusterKey = make([]byte, clusterKeyLen)
-		_, err := rand.Read(clusterKey)
-		if err != nil {
-			return nil, err
-		}
-		// TODO: refactor this into subcommand ("showkey"?)
-		if isatty.IsTerminal(os.Stdout.Fd()) {
-			fmt.Printf("new cluster key generated: %s\n", base64.StdEncoding.EncodeToString(clusterKey))
-		}
-	}
-	state.ClusterKey = clusterKey
-
-	// we check for mutual exclusion in config.go
-	bindAddr := config.BindAddr
-	if config.BindIface != "" {
-		iface, err := net.InterfaceByName(config.BindIface)
-		if err != nil {
-			return nil, err
-		}
-		addrs, err := iface.Addrs()
-		if err != nil {
-			return nil, err
-		}
-		if len(addrs) > 0 {
-			if addr, ok := addrs[0].(*net.IPNet); ok {
-				bindAddr = addr.IP.String()
-			}
-		}
+	bindAddr, err := computeBindAddr(config.BindAddr, config.BindIface)
+	if err != nil {
+		return nil, err
 	}
 
 	mlConfig := memberlist.DefaultWANConfig()
@@ -229,6 +205,43 @@ type node struct {
 
 func (n *node) String() string {
 	return n.Addr.String()
+}
+
+func computeClusterKey(state *ClusterState, clusterKey []byte) ([]byte, error) {
+	if len(clusterKey) == 0 {
+		clusterKey = state.ClusterKey
+	}
+	if len(clusterKey) == 0 {
+		clusterKey = make([]byte, clusterKeyLen)
+		_, err := rand.Read(clusterKey)
+		if err != nil {
+			return nil, err
+		}
+		if isatty.IsTerminal(os.Stdout.Fd()) {
+			fmt.Printf("new cluster key generated: %s\n", base64.StdEncoding.EncodeToString(clusterKey))
+		}
+	}
+	state.ClusterKey = clusterKey
+	return clusterKey, nil
+}
+
+func computeBindAddr(bindAddr string, bindIface string) (string, error) {
+	if bindIface != "" {
+		iface, err := net.InterfaceByName(bindIface)
+		if err != nil {
+			return "", err
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return "", err
+		}
+		if len(addrs) > 0 {
+			if addr, ok := addrs[0].(*net.IPNet); ok {
+				bindAddr = addr.IP.String()
+			}
+		}
+	}
+	return bindAddr, nil
 }
 
 func (c *cluster) saveState() error {
