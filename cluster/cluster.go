@@ -3,11 +3,8 @@ package cluster
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
 	"time"
 
 	"github.com/costela/wesher/common"
@@ -19,12 +16,6 @@ import (
 
 const KeyLen = 32
 
-// State keeps track of information needed to rejoin the cluster
-type State struct {
-	ClusterKey []byte
-	Nodes      []common.Node
-}
-
 type Cluster struct {
 	LocalName string // used to avoid LocalNode(); should not change
 	ml        *memberlist.Memberlist
@@ -32,8 +23,6 @@ type Cluster struct {
 	state     *State
 	events    chan memberlist.NodeEvent
 }
-
-const statePath = "/var/lib/wesher/state.json"
 
 func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool) (*Cluster, error) {
 	state := &State{}
@@ -75,25 +64,6 @@ func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsNam
 
 	return &cluster, nil
 }
-
-func (c *Cluster) NotifyConflict(node, other *memberlist.Node) {
-	logrus.Errorf("node name conflict detected: %s", other.Name)
-}
-
-func (c *Cluster) NodeMeta(limit int) []byte {
-	encoded, err := c.localNode.Encode(limit)
-	if err != nil {
-		logrus.Errorf("failed to encode local node: %s", err)
-		return nil
-	}
-	return encoded
-}
-
-// none of these are used
-func (c *Cluster) NotifyMsg([]byte)                           {}
-func (c *Cluster) GetBroadcasts(overhead, limit int) [][]byte { return nil }
-func (c *Cluster) LocalState(join bool) []byte                { return nil }
-func (c *Cluster) MergeRemoteState(buf []byte, join bool)     {}
 
 func (c *Cluster) Join(addrs []string) error {
 	if len(addrs) == 0 {
@@ -175,35 +145,4 @@ func computeClusterKey(state *State, clusterKey []byte) ([]byte, error) {
 	}
 	state.ClusterKey = clusterKey
 	return clusterKey, nil
-}
-
-func (c *Cluster) saveState() error {
-	if err := os.MkdirAll(path.Dir(statePath), 0700); err != nil {
-		return err
-	}
-
-	stateOut, err := json.MarshalIndent(c.state, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(statePath, stateOut, 0600)
-}
-
-func loadState(cs *State) {
-	content, err := ioutil.ReadFile(statePath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			logrus.Warnf("could not open state in %s: %s", statePath, err)
-		}
-		return
-	}
-
-	// avoid partially unmarshalled content by using a temp var
-	csTmp := &State{}
-	if err := json.Unmarshal(content, csTmp); err != nil {
-		logrus.Warnf("could not decode state: %s", err)
-	} else {
-		*cs = *csTmp
-	}
 }
