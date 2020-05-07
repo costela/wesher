@@ -38,6 +38,7 @@ func (n *Node) Encode(limit int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Decode the node Meta field into its metadata
 func (n *Node) Decode() error {
 	// TODO: we blindly trust the info we get from the peers; We should be more defensive to limit the damage a leaked
 	// PSK can cause.

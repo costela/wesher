@@ -14,8 +14,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// KeyLen is the fixed length of cluster keys, must be checked by callers
 const KeyLen = 32
 
+// Cluster represents a running cluster configuration
 type Cluster struct {
 	LocalName string // used to avoid LocalNode(); should not change
 	ml        *memberlist.Memberlist
@@ -24,6 +26,8 @@ type Cluster struct {
 	events    chan memberlist.NodeEvent
 }
 
+// New is used to create a new Cluster instance
+// The returned instance is ready to be updated with the local node settings then joined
 func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool) (*Cluster, error) {
 	state := &State{}
 	if !init {
@@ -65,6 +69,11 @@ func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsNam
 	return &cluster, nil
 }
 
+// Join tries to join the cluster by contacting provided addresses
+// Provided addresses are passed as is, if no address is provided, known
+// cluster nodes are contacted instead.
+// Joining fail if none of the provided addresses or none of the known
+// nodes can be joined.
 func (c *Cluster) Join(addrs []string) error {
 	if len(addrs) == 0 {
 		for _, n := range c.state.Nodes {
@@ -80,17 +89,24 @@ func (c *Cluster) Join(addrs []string) error {
 	return nil
 }
 
+// Leave saves the current state before leaving, then leaves the cluster
 func (c *Cluster) Leave() {
 	c.saveState()
 	c.ml.Leave(10 * time.Second)
 	c.ml.Shutdown() //nolint: errcheck
 }
 
+// Update takes a new local node configuration into account
+// If the node is already joined, update also gossips the new local node
+// configuration
 func (c *Cluster) Update(localNode common.Node) {
 	c.localNode = localNode
 	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 }
 
+// Members provides a channel notifying of cluster changes
+// Everytime a change happens inside the cluster (except for local changes),
+// the updated list of cluster nodes is pushed to the channel.
 func (c *Cluster) Members() <-chan []common.Node {
 	changes := make(chan []common.Node)
 	go func() {
