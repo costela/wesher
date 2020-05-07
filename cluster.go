@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"path"
 	"time"
@@ -33,18 +32,13 @@ type cluster struct {
 
 const statePath = "/var/lib/wesher/state.json"
 
-func newCluster(init bool, clusterKey []byte, bindAddr string, bindIface string, bindPort int, useIPAsName bool, getMeta func(int) []byte) (*cluster, error) {
+func newCluster(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool, getMeta func(int) []byte) (*cluster, error) {
 	state := &ClusterState{}
 	if !init {
 		loadState(state)
 	}
 
 	clusterKey, err := computeClusterKey(state, clusterKey)
-	if err != nil {
-		return nil, err
-	}
-
-	bindAddr, err = computeBindAddr(bindAddr, bindIface)
 	if err != nil {
 		return nil, err
 	}
@@ -173,25 +167,6 @@ func computeClusterKey(state *ClusterState, clusterKey []byte) ([]byte, error) {
 	}
 	state.ClusterKey = clusterKey
 	return clusterKey, nil
-}
-
-func computeBindAddr(bindAddr string, bindIface string) (string, error) {
-	if bindIface != "" {
-		iface, err := net.InterfaceByName(bindIface)
-		if err != nil {
-			return "", err
-		}
-		addrs, err := iface.Addrs()
-		if err != nil {
-			return "", err
-		}
-		if len(addrs) > 0 {
-			if addr, ok := addrs[0].(*net.IPNet); ok {
-				bindAddr = addr.IP.String()
-			}
-		}
-	}
-	return bindAddr, nil
 }
 
 func (c *cluster) saveState() error {
