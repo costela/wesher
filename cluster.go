@@ -166,6 +166,7 @@ func computeClusterKey(state *ClusterState, clusterKey []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		// TODO: refactor this into subcommand ("showkey"?)
 		if isatty.IsTerminal(os.Stdout.Fd()) {
 			fmt.Printf("new cluster key generated: %s\n", base64.StdEncoding.EncodeToString(clusterKey))
 		}
