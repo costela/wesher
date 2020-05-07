@@ -1,4 +1,4 @@
-package main
+package cluster
 
 import (
 	"crypto/rand"
@@ -10,30 +10,33 @@ import (
 	"path"
 	"time"
 
+	"github.com/costela/wesher/common"
 	"github.com/hashicorp/memberlist"
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-// ClusterState keeps track of information needed to rejoin the cluster
-type ClusterState struct {
+const KeyLen = 32
+
+// State keeps track of information needed to rejoin the cluster
+type State struct {
 	ClusterKey []byte
-	Nodes      []node
+	Nodes      []common.Node
 }
 
-type cluster struct {
-	localName string // used to avoid LocalNode(); should not change
+type Cluster struct {
+	LocalName string // used to avoid LocalNode(); should not change
 	ml        *memberlist.Memberlist
 	getMeta   func(int) []byte
-	state     *ClusterState
+	state     *State
 	events    chan memberlist.NodeEvent
 }
 
 const statePath = "/var/lib/wesher/state.json"
 
-func newCluster(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool, getMeta func(int) []byte) (*cluster, error) {
-	state := &ClusterState{}
+func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool, getMeta func(int) []byte) (*Cluster, error) {
+	state := &State{}
 	if !init {
 		loadState(state)
 	}
@@ -58,8 +61,8 @@ func newCluster(init bool, clusterKey []byte, bindAddr string, bindPort int, use
 		return nil, err
 	}
 
-	cluster := cluster{
-		localName: ml.LocalNode().Name,
+	cluster := Cluster{
+		LocalName: ml.LocalNode().Name,
 		ml:        ml,
 		getMeta:   getMeta,
 		// The big channel buffer is a work-around for https://github.com/hashicorp/memberlist/issues/23
@@ -74,21 +77,21 @@ func newCluster(init bool, clusterKey []byte, bindAddr string, bindPort int, use
 	return &cluster, nil
 }
 
-func (c *cluster) NotifyConflict(node, other *memberlist.Node) {
+func (c *Cluster) NotifyConflict(node, other *memberlist.Node) {
 	logrus.Errorf("node name conflict detected: %s", other.Name)
 }
 
-func (c *cluster) NodeMeta(limit int) []byte {
+func (c *Cluster) NodeMeta(limit int) []byte {
 	return c.getMeta(limit)
 }
 
 // none of these are used
-func (c *cluster) NotifyMsg([]byte)                           {}
-func (c *cluster) GetBroadcasts(overhead, limit int) [][]byte { return nil }
-func (c *cluster) LocalState(join bool) []byte                { return nil }
-func (c *cluster) MergeRemoteState(buf []byte, join bool)     {}
+func (c *Cluster) NotifyMsg([]byte)                           {}
+func (c *Cluster) GetBroadcasts(overhead, limit int) [][]byte { return nil }
+func (c *Cluster) LocalState(join bool) []byte                { return nil }
+func (c *Cluster) MergeRemoteState(buf []byte, join bool)     {}
 
-func (c *cluster) join(addrs []string) error {
+func (c *Cluster) Join(addrs []string) error {
 	if len(addrs) == 0 {
 		for _, n := range c.state.Nodes {
 			addrs = append(addrs, n.Addr.String())
@@ -103,22 +106,22 @@ func (c *cluster) join(addrs []string) error {
 	return nil
 }
 
-func (c *cluster) leave() {
+func (c *Cluster) Leave() {
 	c.saveState()
 	c.ml.Leave(10 * time.Second)
 	c.ml.Shutdown() //nolint: errcheck
 }
 
-func (c *cluster) update() {
+func (c *Cluster) Update() {
 	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 }
 
-func (c *cluster) members() <-chan []node {
-	changes := make(chan []node)
+func (c *Cluster) Members() <-chan []common.Node {
+	changes := make(chan []common.Node)
 	go func() {
 		for {
 			event := <-c.events
-			if event.Node.Name == c.localName {
+			if event.Node.Name == c.LocalName {
 				// ignore events about ourselves
 				continue
 			}
@@ -131,12 +134,12 @@ func (c *cluster) members() <-chan []node {
 				logrus.Infof("node %s left", event.Node)
 			}
 
-			nodes := make([]node, 0)
+			nodes := make([]common.Node, 0)
 			for _, n := range c.ml.Members() {
-				if n.Name == c.localName {
+				if n.Name == c.LocalName {
 					continue
 				}
-				nodes = append(nodes, node{
+				nodes = append(nodes, common.Node{
 					Name: n.Name,
 					Addr: n.Addr,
 					Meta: n.Meta,
@@ -150,12 +153,12 @@ func (c *cluster) members() <-chan []node {
 	return changes
 }
 
-func computeClusterKey(state *ClusterState, clusterKey []byte) ([]byte, error) {
+func computeClusterKey(state *State, clusterKey []byte) ([]byte, error) {
 	if len(clusterKey) == 0 {
 		clusterKey = state.ClusterKey
 	}
 	if len(clusterKey) == 0 {
-		clusterKey = make([]byte, clusterKeyLen)
+		clusterKey = make([]byte, KeyLen)
 		_, err := rand.Read(clusterKey)
 		if err != nil {
 			return nil, err
@@ -169,7 +172,7 @@ func computeClusterKey(state *ClusterState, clusterKey []byte) ([]byte, error) {
 	return clusterKey, nil
 }
 
-func (c *cluster) saveState() error {
+func (c *Cluster) saveState() error {
 	if err := os.MkdirAll(path.Dir(statePath), 0700); err != nil {
 		return err
 	}
@@ -182,7 +185,7 @@ func (c *cluster) saveState() error {
 	return ioutil.WriteFile(statePath, stateOut, 0600)
 }
 
-func loadState(cs *ClusterState) {
+func loadState(cs *State) {
 	content, err := ioutil.ReadFile(statePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -192,7 +195,7 @@ func loadState(cs *ClusterState) {
 	}
 
 	// avoid partially unmarshalled content by using a temp var
-	csTmp := &ClusterState{}
+	csTmp := &State{}
 	if err := json.Unmarshal(content, csTmp); err != nil {
 		logrus.Warnf("could not decode state: %s", err)
 	} else {

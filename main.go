@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
+	"github.com/costela/wesher/cluster"
+	"github.com/costela/wesher/common"
 	"github.com/costela/wesher/etchosts"
+	"github.com/costela/wesher/wg"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,28 +33,28 @@ func main() {
 	}
 	logrus.SetLevel(logLevel)
 
-	wg, err := newWGConfig(config.Interface, config.WireguardPort)
+	wg, err := wg.NewWGConfig(config.Interface, config.WireguardPort)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
 
 	getMeta := func(limit int) []byte {
-		return encodeNodeMeta(nodeMeta{
+		return common.EncodeNodeMeta(common.NodeMeta{
 			OverlayAddr: wg.OverlayAddr,
 			PubKey:      wg.PubKey.String(),
 		}, limit)
 	}
 
-	cluster, err := newCluster(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName, getMeta)
+	cluster, err := cluster.New(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName, getMeta)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
-	wg.assignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.localName)
-	cluster.update()
+	wg.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
+	cluster.Update()
 
-	nodec := cluster.members() // avoid deadlocks by starting before join
+	nodec := cluster.Members() // avoid deadlocks by starting before join
 	if err := backoff.RetryNotify(
-		func() error { return cluster.join(config.Join) },
+		func() error { return cluster.Join(config.Join) },
 		backoff.NewExponentialBackOff(),
 		func(err error, dur time.Duration) {
 			logrus.WithError(err).Errorf("could not join cluster, retrying in %s", dur)
@@ -67,20 +70,20 @@ func main() {
 		select {
 		case rawNodes := <-nodec:
 			logrus.Info("cluster members:\n")
-			nodes := make([]node, 0, len(rawNodes))
+			nodes := make([]common.Node, 0, len(rawNodes))
 			for _, node := range rawNodes {
-				meta, err := decodeNodeMeta(node.Meta)
+				meta, err := common.DecodeNodeMeta(node.Meta)
 				if err != nil {
 					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
 					continue
 				}
-				node.nodeMeta = meta
+				node.NodeMeta = meta
 				nodes = append(nodes, node)
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
 			}
-			if err := wg.setUpInterface(nodes); err != nil {
+			if err := wg.SetUpInterface(nodes); err != nil {
 				logrus.WithError(err).Error("could not up interface")
-				wg.downInterface()
+				wg.DownInterface()
 			}
 			if !config.NoEtcHosts {
 				if err := writeToEtcHosts(nodes); err != nil {
@@ -89,13 +92,13 @@ func main() {
 			}
 		case <-incomingSigs:
 			logrus.Info("terminating...")
-			cluster.leave()
+			cluster.Leave()
 			if !config.NoEtcHosts {
 				if err := writeToEtcHosts(nil); err != nil {
 					logrus.WithError(err).Error("could not remove stale hosts entries")
 				}
 			}
-			if err := wg.downInterface(); err != nil {
+			if err := wg.DownInterface(); err != nil {
 				logrus.WithError(err).Error("could not down interface")
 			}
 			os.Exit(0)
@@ -103,7 +106,7 @@ func main() {
 	}
 }
 
-func writeToEtcHosts(nodes []node) error {
+func writeToEtcHosts(nodes []common.Node) error {
 	hosts := make(map[string][]string, len(nodes))
 	for _, n := range nodes {
 		hosts[n.OverlayAddr.IP.String()] = []string{n.Name}

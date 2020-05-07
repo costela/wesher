@@ -1,4 +1,4 @@
-package main
+package wg
 
 import (
 	"net"
@@ -31,8 +31,8 @@ func Test_wgState_assignOverlayAddr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wg := &wgState{}
-			wg.assignOverlayAddr(tt.args.ipnet, tt.args.name)
+			wg := &WgState{}
+			wg.AssignOverlayAddr(tt.args.ipnet, tt.args.name)
 
 			if !reflect.DeepEqual(wg.OverlayAddr.IP.String(), tt.want) {
 				t.Errorf("assignOverlayAddr() set = %s, want %s", wg.OverlayAddr, tt.want)
@@ -47,8 +47,8 @@ func Test_wgState_assignOverlayAddr_no_obvious_collisions(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/24")
 	assignments := make(map[string]string)
 	for _, n := range []string{"test", "test1", "test2", "1test", "2test"} {
-		wg := &wgState{}
-		wg.assignOverlayAddr(ipnet, n)
+		wg := &WgState{}
+		wg.AssignOverlayAddr(ipnet, n)
 		if assigned, ok := assignments[wg.OverlayAddr.String()]; ok {
 			t.Errorf("IP assignment collision: hash(%s) = hash(%s)", n, assigned)
 		}
@@ -59,10 +59,10 @@ func Test_wgState_assignOverlayAddr_no_obvious_collisions(t *testing.T) {
 // This should ensure the obvious fact that the same name should map to the same IP if called twice.
 func Test_wgState_assignOverlayAddr_consistent(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/8")
-	wg1 := &wgState{}
-	wg1.assignOverlayAddr(ipnet, "test")
-	wg2 := &wgState{}
-	wg2.assignOverlayAddr(ipnet, "test")
+	wg1 := &WgState{}
+	wg1.AssignOverlayAddr(ipnet, "test")
+	wg2 := &WgState{}
+	wg2.AssignOverlayAddr(ipnet, "test")
 	if wg1.OverlayAddr.String() != wg2.OverlayAddr.String() {
 		t.Errorf("assignOverlayAddr() %s != %s", wg1.OverlayAddr, wg2.OverlayAddr)
 	}
@@ -70,10 +70,10 @@ func Test_wgState_assignOverlayAddr_consistent(t *testing.T) {
 
 func Test_wgState_assignOverlayAddr_repeatable(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/8")
-	wg := &wgState{}
-	wg.assignOverlayAddr(ipnet, "test")
+	wg := &WgState{}
+	wg.AssignOverlayAddr(ipnet, "test")
 	gen1 := wg.OverlayAddr.String()
-	wg.assignOverlayAddr(ipnet, "test")
+	wg.AssignOverlayAddr(ipnet, "test")
 	gen2 := wg.OverlayAddr.String()
 	if gen1 != gen2 {
 		t.Errorf("assignOverlayAddr() %s != %s", gen1, gen2)
