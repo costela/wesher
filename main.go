@@ -44,6 +44,11 @@ func main() {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
 
+	// Prepare the /etc/hosts writer
+	hostsFile := &etchosts.EtcHosts{
+		Logger: logrus.StandardLogger(),
+	}
+
 	// Assign a local node address and propagate it to the cluster
 	wgstate.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
 	localNode := common.Node{}
@@ -70,22 +75,24 @@ func main() {
 	for {
 		select {
 		case rawNodes := <-nodec:
-			logrus.Info("cluster members:\n")
 			nodes := make([]common.Node, 0, len(rawNodes))
+			hosts := make(map[string][]string, len(rawNodes))
+			logrus.Info("cluster members:\n")
 			for _, node := range rawNodes {
 				if err := node.Decode(); err != nil {
 					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
 					continue
 				}
-				nodes = append(nodes, node)
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
+				nodes = append(nodes, node)
+				hosts[node.OverlayAddr.IP.String()] = []string{node.Name}
 			}
 			if err := wgstate.SetUpInterface(nodes); err != nil {
 				logrus.WithError(err).Error("could not up interface")
 				wgstate.DownInterface()
 			}
 			if !config.NoEtcHosts {
-				if err := writeToEtcHosts(nodes); err != nil {
+				if err := hostsFile.WriteEntries(hosts); err != nil {
 					logrus.WithError(err).Error("could not write hosts entries")
 				}
 			}
@@ -93,7 +100,7 @@ func main() {
 			logrus.Info("terminating...")
 			cluster.Leave()
 			if !config.NoEtcHosts {
-				if err := writeToEtcHosts(nil); err != nil {
+				if err := hostsFile.WriteEntries(map[string][]string{}); err != nil {
 					logrus.WithError(err).Error("could not remove stale hosts entries")
 				}
 			}
@@ -103,15 +110,4 @@ func main() {
 			os.Exit(0)
 		}
 	}
-}
-
-func writeToEtcHosts(nodes []common.Node) error {
-	hosts := make(map[string][]string, len(nodes))
-	for _, n := range nodes {
-		hosts[n.OverlayAddr.IP.String()] = []string{n.Name}
-	}
-	hostsFile := &etchosts.EtcHosts{
-		Logger: logrus.StandardLogger(),
-	}
-	return hostsFile.WriteEntries(hosts)
 }
