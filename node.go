@@ -52,7 +52,7 @@ func decodeNodeMeta(b []byte) (nodeMeta, error) {
 
 func parseNodesMeta(rawNodes []node) []node {
 	logrus.Info("cluster members:\n")
-	nodes := make([]node, 0)
+	nodes := make([]node, 0, len(rawNodes))
 	for _, node := range rawNodes {
 		meta, err := decodeNodeMeta(node.Meta)
 		if err != nil {
