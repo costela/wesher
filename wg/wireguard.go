@@ -12,8 +12,8 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// WgState holds the configured state of a Wesher Wireguard interface
-type WgState struct {
+// State holds the configured state of a Wesher Wireguard interface
+type State struct {
 	iface       string
 	client      *wgctrl.Client
 	OverlayAddr net.IPNet
@@ -22,10 +22,10 @@ type WgState struct {
 	PubKey      wgtypes.Key
 }
 
-// NewWGConfig creates a new Wesher Wireguard state
+// New creates a new Wesher Wireguard state
 // The Wireguard keys are generated for every new interface
 // The interface must later be setup using SetUpInterface
-func NewWGConfig(iface string, port int) (*WgState, error) {
+func New(iface string, port int) (*State, error) {
 	client, err := wgctrl.New()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not instantiate wireguard client")
@@ -37,14 +37,14 @@ func NewWGConfig(iface string, port int) (*WgState, error) {
 	}
 	pubKey := privKey.PublicKey()
 
-	wgState := WgState{
+	state := State{
 		iface:   iface,
 		client:  client,
 		Port:    port,
 		PrivKey: privKey,
 		PubKey:  pubKey,
 	}
-	return &wgState, nil
+	return &state, nil
 }
 
 // AssignOverlayAddr assigns a new address to the interface
@@ -52,7 +52,7 @@ func NewWGConfig(iface string, port int) (*WgState, error) {
 // provided name deterministically
 // Currently, the address is assigned by hashing the name and mapping that
 // hash in the target network space
-func (wg *WgState) AssignOverlayAddr(ipnet *net.IPNet, name string) {
+func (s *State) AssignOverlayAddr(ipnet *net.IPNet, name string) {
 	// TODO: this is way too brittle and opaque
 	bits, size := ipnet.Mask.Size()
 	ip := make([]byte, len(ipnet.IP))
@@ -66,21 +66,21 @@ func (wg *WgState) AssignOverlayAddr(ipnet *net.IPNet, name string) {
 		ip[len(ip)-i] = hb[len(hb)-i]
 	}
 
-	wg.OverlayAddr = net.IPNet{
+	s.OverlayAddr = net.IPNet{
 		IP:   net.IP(ip),
 		Mask: net.CIDRMask(size, size), // either /32 or /128, depending if ipv4 or ipv6
 	}
 }
 
 // DownInterface shuts down the associated network interface
-func (wg *WgState) DownInterface() error {
-	if _, err := wg.client.Device(wg.iface); err != nil {
+func (s *State) DownInterface() error {
+	if _, err := s.client.Device(s.iface); err != nil {
 		if os.IsNotExist(err) {
 			return nil // device already gone; noop
 		}
 		return err
 	}
-	link, err := netlink.LinkByName(wg.iface)
+	link, err := netlink.LinkByName(s.iface)
 	if err != nil {
 		return err
 	}
@@ -88,39 +88,39 @@ func (wg *WgState) DownInterface() error {
 }
 
 // SetUpInterface creates and setup the associated network interface
-func (wg *WgState) SetUpInterface(nodes []common.Node) error {
-	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: wg.iface}}); err != nil && !os.IsExist(err) {
-		return errors.Wrapf(err, "could not create interface %s", wg.iface)
+func (s *State) SetUpInterface(nodes []common.Node) error {
+	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: s.iface}}); err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "could not create interface %s", s.iface)
 	}
 
-	peerCfgs, err := wg.nodesToPeerConfigs(nodes)
+	peerCfgs, err := s.nodesToPeerConfigs(nodes)
 	if err != nil {
 		return errors.Wrap(err, "error converting received node information to wireguard format")
 	}
-	if err := wg.client.ConfigureDevice(wg.iface, wgtypes.Config{
-		PrivateKey:   &wg.PrivKey,
-		ListenPort:   &wg.Port,
+	if err := s.client.ConfigureDevice(s.iface, wgtypes.Config{
+		PrivateKey:   &s.PrivKey,
+		ListenPort:   &s.Port,
 		ReplacePeers: true,
 		Peers:        peerCfgs,
 	}); err != nil {
-		return errors.Wrapf(err, "could not set wireguard configuration for %s", wg.iface)
+		return errors.Wrapf(err, "could not set wireguard configuration for %s", s.iface)
 	}
 
-	link, err := netlink.LinkByName(wg.iface)
+	link, err := netlink.LinkByName(s.iface)
 	if err != nil {
-		return errors.Wrapf(err, "could not get link information for %s", wg.iface)
+		return errors.Wrapf(err, "could not get link information for %s", s.iface)
 	}
 	if err := netlink.AddrReplace(link, &netlink.Addr{
-		IPNet: &wg.OverlayAddr,
+		IPNet: &s.OverlayAddr,
 	}); err != nil {
-		return errors.Wrapf(err, "could not set address for %s", wg.iface)
+		return errors.Wrapf(err, "could not set address for %s", s.iface)
 	}
 	// TODO: make MTU configurable?
 	if err := netlink.LinkSetMTU(link, 1420); err != nil {
-		return errors.Wrapf(err, "could not set MTU for %s", wg.iface)
+		return errors.Wrapf(err, "could not set MTU for %s", s.iface)
 	}
 	if err := netlink.LinkSetUp(link); err != nil {
-		return errors.Wrapf(err, "could not enable interface %s", wg.iface)
+		return errors.Wrapf(err, "could not enable interface %s", s.iface)
 	}
 	for _, node := range nodes {
 		netlink.RouteAdd(&netlink.Route{
@@ -133,7 +133,7 @@ func (wg *WgState) SetUpInterface(nodes []common.Node) error {
 	return nil
 }
 
-func (wg *WgState) nodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig, error) {
+func (s *State) nodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig, error) {
 	peerCfgs := make([]wgtypes.PeerConfig, len(nodes))
 	for i, node := range nodes {
 		pubKey, err := wgtypes.ParseKey(node.PubKey)
@@ -145,7 +145,7 @@ func (wg *WgState) nodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig
 			ReplaceAllowedIPs: true,
 			Endpoint: &net.UDPAddr{
 				IP:   node.Addr,
-				Port: wg.Port,
+				Port: s.Port,
 			},
 			AllowedIPs: []net.IPNet{
 				node.OverlayAddr,
