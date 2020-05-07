@@ -66,7 +66,18 @@ func main() {
 	for {
 		select {
 		case rawNodes := <-nodec:
-			nodes := parseNodesMeta(rawNodes)
+			logrus.Info("cluster members:\n")
+			nodes := make([]node, 0, len(rawNodes))
+			for _, node := range rawNodes {
+				meta, err := decodeNodeMeta(node.Meta)
+				if err != nil {
+					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
+					continue
+				}
+				node.nodeMeta = meta
+				nodes = append(nodes, node)
+				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
+			}
 			if err := wg.setUpInterface(nodes); err != nil {
 				logrus.WithError(err).Error("could not up interface")
 				wg.downInterface()
