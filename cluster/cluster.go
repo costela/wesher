@@ -28,14 +28,14 @@ type State struct {
 type Cluster struct {
 	LocalName string // used to avoid LocalNode(); should not change
 	ml        *memberlist.Memberlist
-	getMeta   func(int) []byte
+	localNode common.Node
 	state     *State
 	events    chan memberlist.NodeEvent
 }
 
 const statePath = "/var/lib/wesher/state.json"
 
-func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool, getMeta func(int) []byte) (*Cluster, error) {
+func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool) (*Cluster, error) {
 	state := &State{}
 	if !init {
 		loadState(state)
@@ -64,7 +64,6 @@ func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsNam
 	cluster := Cluster{
 		LocalName: ml.LocalNode().Name,
 		ml:        ml,
-		getMeta:   getMeta,
 		// The big channel buffer is a work-around for https://github.com/hashicorp/memberlist/issues/23
 		// More than this many simultaneous events will deadlock cluster.members()
 		events: make(chan memberlist.NodeEvent, 100),
@@ -82,7 +81,12 @@ func (c *Cluster) NotifyConflict(node, other *memberlist.Node) {
 }
 
 func (c *Cluster) NodeMeta(limit int) []byte {
-	return c.getMeta(limit)
+	encoded, err := c.localNode.Encode(limit)
+	if err != nil {
+		logrus.Errorf("failed to encode local node: %s", err)
+		return nil
+	}
+	return encoded
 }
 
 // none of these are used
@@ -112,7 +116,8 @@ func (c *Cluster) Leave() {
 	c.ml.Shutdown() //nolint: errcheck
 }
 
-func (c *Cluster) Update() {
+func (c *Cluster) Update(localNode common.Node) {
+	c.localNode = localNode
 	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 }
 

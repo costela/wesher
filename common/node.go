@@ -6,11 +6,10 @@ import (
 	"net"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
-// NodeMeta holds metadata sent over the cluster
-type NodeMeta struct {
+// nodeMeta holds metadata sent over the cluster
+type nodeMeta struct {
 	OverlayAddr net.IPNet
 	PubKey      string
 }
@@ -20,32 +19,40 @@ type Node struct {
 	Name string
 	Addr net.IP
 	Meta []byte
-	NodeMeta
+	nodeMeta
 }
 
 func (n *Node) String() string {
 	return n.Addr.String()
 }
 
-func EncodeNodeMeta(nm NodeMeta, limit int) []byte {
-	buf := &bytes.Buffer{}
-	if err := gob.NewEncoder(buf).Encode(nm); err != nil {
-		logrus.Errorf("could not encode local state: %s", err)
-		return nil
+func MakeLocalNode(overlayAddr net.IPNet, pubKey string) Node {
+	return Node{
+		nodeMeta: nodeMeta{
+			OverlayAddr: overlayAddr,
+			PubKey:      pubKey,
+		},
 	}
-	if buf.Len() > limit {
-		logrus.Errorf("could not fit node metadata into %d bytes", limit)
-		return nil
-	}
-	return buf.Bytes()
 }
 
-func DecodeNodeMeta(b []byte) (NodeMeta, error) {
+func (n *Node) Encode(limit int) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	if err := gob.NewEncoder(buf).Encode(n.nodeMeta); err != nil {
+		return nil, errors.Wrap(err, "could not encode local state")
+	}
+	if buf.Len() > limit {
+		return nil, errors.Errorf("could not fit node metadata into %d bytes", limit)
+	}
+	return buf.Bytes(), nil
+}
+
+func (n *Node) Decode() error {
 	// TODO: we blindly trust the info we get from the peers; We should be more defensive to limit the damage a leaked
 	// PSK can cause.
-	nm := NodeMeta{}
-	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(&nm); err != nil {
-		return nm, errors.Wrap(err, "could not decode node meta")
+	nm := nodeMeta{}
+	if err := gob.NewDecoder(bytes.NewReader(n.Meta)).Decode(&nm); err != nil {
+		return errors.Wrap(err, "could not decode node meta")
 	}
-	return nm, nil
+	n.nodeMeta = nm
+	return nil
 }
