@@ -1,17 +1,18 @@
-package main
+package wg
 
 import (
 	"hash/fnv"
 	"net"
 	"os"
 
+	"github.com/costela/wesher/common"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-type wgState struct {
+type WgState struct {
 	iface       string
 	client      *wgctrl.Client
 	OverlayAddr net.IPNet
@@ -20,7 +21,7 @@ type wgState struct {
 	PubKey      wgtypes.Key
 }
 
-func newWGConfig(iface string, port int) (*wgState, error) {
+func NewWGConfig(iface string, port int) (*WgState, error) {
 	client, err := wgctrl.New()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not instantiate wireguard client")
@@ -32,7 +33,7 @@ func newWGConfig(iface string, port int) (*wgState, error) {
 	}
 	pubKey := privKey.PublicKey()
 
-	wgState := wgState{
+	wgState := WgState{
 		iface:   iface,
 		client:  client,
 		Port:    port,
@@ -42,7 +43,7 @@ func newWGConfig(iface string, port int) (*wgState, error) {
 	return &wgState, nil
 }
 
-func (wg *wgState) assignOverlayAddr(ipnet *net.IPNet, name string) {
+func (wg *WgState) AssignOverlayAddr(ipnet *net.IPNet, name string) {
 	// TODO: this is way too brittle and opaque
 	bits, size := ipnet.Mask.Size()
 	ip := make([]byte, len(ipnet.IP))
@@ -62,7 +63,7 @@ func (wg *wgState) assignOverlayAddr(ipnet *net.IPNet, name string) {
 	}
 }
 
-func (wg *wgState) downInterface() error {
+func (wg *WgState) DownInterface() error {
 	if _, err := wg.client.Device(wg.iface); err != nil {
 		if os.IsNotExist(err) {
 			return nil // device already gone; noop
@@ -76,12 +77,12 @@ func (wg *wgState) downInterface() error {
 	return netlink.LinkDel(link)
 }
 
-func (wg *wgState) setUpInterface(nodes []node) error {
+func (wg *WgState) SetUpInterface(nodes []common.Node) error {
 	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: wg.iface}}); err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "could not create interface %s", wg.iface)
 	}
 
-	peerCfgs, err := wg.nodesToPeerConfigs(nodes)
+	peerCfgs, err := wg.NodesToPeerConfigs(nodes)
 	if err != nil {
 		return errors.Wrap(err, "error converting received node information to wireguard format")
 	}
@@ -121,7 +122,7 @@ func (wg *wgState) setUpInterface(nodes []node) error {
 	return nil
 }
 
-func (wg *wgState) nodesToPeerConfigs(nodes []node) ([]wgtypes.PeerConfig, error) {
+func (wg *WgState) NodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig, error) {
 	peerCfgs := make([]wgtypes.PeerConfig, len(nodes))
 	for i, node := range nodes {
 		pubKey, err := wgtypes.ParseKey(node.PubKey)

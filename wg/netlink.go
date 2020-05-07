@@ -1,4 +1,4 @@
-package main
+package wg
 
 import "github.com/vishvananda/netlink"
 

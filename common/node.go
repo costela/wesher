@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"bytes"
@@ -9,25 +9,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// nodeMeta holds metadata sent over the cluster
-type nodeMeta struct {
+// NodeMeta holds metadata sent over the cluster
+type NodeMeta struct {
 	OverlayAddr net.IPNet
 	PubKey      string
 }
 
 // Node holds the memberlist node structure
-type node struct {
+type Node struct {
 	Name string
 	Addr net.IP
 	Meta []byte
-	nodeMeta
+	NodeMeta
 }
 
-func (n *node) String() string {
+func (n *Node) String() string {
 	return n.Addr.String()
 }
 
-func encodeNodeMeta(nm nodeMeta, limit int) []byte {
+func EncodeNodeMeta(nm NodeMeta, limit int) []byte {
 	buf := &bytes.Buffer{}
 	if err := gob.NewEncoder(buf).Encode(nm); err != nil {
 		logrus.Errorf("could not encode local state: %s", err)
@@ -40,10 +40,10 @@ func encodeNodeMeta(nm nodeMeta, limit int) []byte {
 	return buf.Bytes()
 }
 
-func decodeNodeMeta(b []byte) (nodeMeta, error) {
+func DecodeNodeMeta(b []byte) (NodeMeta, error) {
 	// TODO: we blindly trust the info we get from the peers; We should be more defensive to limit the damage a leaked
 	// PSK can cause.
-	nm := nodeMeta{}
+	nm := NodeMeta{}
 	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(&nm); err != nil {
 		return nm, errors.Wrap(err, "could not decode node meta")
 	}

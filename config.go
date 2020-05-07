@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/costela/wesher/cluster"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/stevenroose/gonfig"
 )
-
-const clusterKeyLen = 32
 
 type config struct {
 	ClusterKey    []byte   `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
@@ -36,8 +35,8 @@ func loadConfig() (*config, error) {
 	}
 
 	// perform some validation
-	if len(config.ClusterKey) != 0 && len(config.ClusterKey) != clusterKeyLen {
-		return nil, fmt.Errorf("unsupported cluster key length; expected %d, got %d", clusterKeyLen, len(config.ClusterKey))
+	if len(config.ClusterKey) != 0 && len(config.ClusterKey) != cluster.KeyLen {
+		return nil, fmt.Errorf("unsupported cluster key length; expected %d, got %d", cluster.KeyLen, len(config.ClusterKey))
 	}
 
 	if bits, _ := ((*net.IPNet)(config.OverlayNet)).Mask.Size(); bits%8 != 0 {
