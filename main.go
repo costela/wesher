@@ -19,6 +19,7 @@ import (
 var version = "dev"
 
 func main() {
+	// General initialization
 	config, err := loadConfig()
 	if err != nil {
 		logrus.Fatal(err)
@@ -33,22 +34,24 @@ func main() {
 	}
 	logrus.SetLevel(logLevel)
 
+	// Create the wireguard and cluster configuration
 	wgstate, err := wg.New(config.Interface, config.WireguardPort)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
-
 	cluster, err := cluster.New(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
 
+	// Assign a local node address and propagate it to the cluster
 	wgstate.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
 	localNode := common.Node{}
 	localNode.OverlayAddr = wgstate.OverlayAddr
 	localNode.PubKey = wgstate.PubKey.String()
 	cluster.Update(localNode)
 
+	// Join the cluster
 	nodec := cluster.Members() // avoid deadlocks by starting before join
 	if err := backoff.RetryNotify(
 		func() error { return cluster.Join(config.Join) },
@@ -60,6 +63,7 @@ func main() {
 		logrus.WithError(err).Fatal("could not join cluster")
 	}
 
+	// Main loop
 	incomingSigs := make(chan os.Signal, 1)
 	signal.Notify(incomingSigs, syscall.SIGTERM, os.Interrupt)
 	logrus.Debug("waiting for cluster events")
