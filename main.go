@@ -42,7 +42,7 @@ func main() {
 		}, limit)
 	}
 
-	cluster, err := newCluster(config.Init, config.ClusterKey, config.BindAddr, config.BindIface, config.ClusterPort, config.UseIPAsName, getMeta)
+	cluster, err := newCluster(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName, getMeta)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}

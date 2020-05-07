@@ -44,10 +44,26 @@ func loadConfig() (*config, error) {
 		return nil, fmt.Errorf("unsupported overlay network size; net mask must be multiple of 8, got %d", bits)
 	}
 
-	// FIXME: this is a workaround for memberlist refusing to listen on public IPs if BindAddr==0.0.0.0
 	if config.BindAddr != "" && config.BindIface != "" {
 		return nil, fmt.Errorf("setting both bind address and bind interface is not supported")
+
+	} else if config.BindIface != "" {
+		// Compute the actual bind address based on the provided interface
+		iface, err := net.InterfaceByName(config.BindIface)
+		if err != nil {
+			return nil, fmt.Errorf("cannot find interface %s", config.BindIface)
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil, fmt.Errorf("no available ip address on interface %s", config.BindIface)
+		}
+		if len(addrs) > 0 {
+			if addr, ok := addrs[0].(*net.IPNet); ok {
+				config.BindAddr = addr.IP.String()
+			}
+		}
 	} else if config.BindAddr == "" && config.BindIface == "" {
+		// FIXME: this is a workaround for memberlist refusing to listen on public IPs if BindAddr==0.0.0.0
 		detectedBindAddr, err := sockaddr.GetPublicIP()
 		if err != nil {
 			return nil, err
