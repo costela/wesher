@@ -26,15 +26,7 @@ func (n *Node) String() string {
 	return n.Addr.String()
 }
 
-func MakeLocalNode(overlayAddr net.IPNet, pubKey string) Node {
-	return Node{
-		nodeMeta: nodeMeta{
-			OverlayAddr: overlayAddr,
-			PubKey:      pubKey,
-		},
-	}
-}
-
+// Encode the node metadata to bytes, in a deterministic reversible way
 func (n *Node) Encode(limit int) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	if err := gob.NewEncoder(buf).Encode(n.nodeMeta); err != nil {
