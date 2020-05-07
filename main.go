@@ -38,19 +38,14 @@ func main() {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
 
-	getMeta := func(limit int) []byte {
-		return common.EncodeNodeMeta(common.NodeMeta{
-			OverlayAddr: wg.OverlayAddr,
-			PubKey:      wg.PubKey.String(),
-		}, limit)
-	}
-
-	cluster, err := cluster.New(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName, getMeta)
+	cluster, err := cluster.New(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
+
 	wg.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
-	cluster.Update()
+	localNode := common.MakeLocalNode(wg.OverlayAddr, wg.PubKey.String())
+	cluster.Update(localNode)
 
 	nodec := cluster.Members() // avoid deadlocks by starting before join
 	if err := backoff.RetryNotify(
@@ -72,12 +67,10 @@ func main() {
 			logrus.Info("cluster members:\n")
 			nodes := make([]common.Node, 0, len(rawNodes))
 			for _, node := range rawNodes {
-				meta, err := common.DecodeNodeMeta(node.Meta)
-				if err != nil {
+				if err := node.Decode(); err != nil {
 					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
 					continue
 				}
-				node.NodeMeta = meta
 				nodes = append(nodes, node)
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
 			}
