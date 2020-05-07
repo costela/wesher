@@ -44,7 +44,9 @@ func main() {
 	}
 
 	wg.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
-	localNode := common.MakeLocalNode(wg.OverlayAddr, wg.PubKey.String())
+	localNode := common.Node{}
+	localNode.OverlayAddr = wg.OverlayAddr
+	localNode.PubKey = wg.PubKey.String()
 	cluster.Update(localNode)
 
 	nodec := cluster.Members() // avoid deadlocks by starting before join
