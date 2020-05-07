@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_wgState_assignOverlayAddr(t *testing.T) {
+func Test_State_AssignOverlayAddr(t *testing.T) {
 	type args struct {
 		ipnet *net.IPNet
 		name  string
@@ -31,11 +31,11 @@ func Test_wgState_assignOverlayAddr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wg := &WgState{}
-			wg.AssignOverlayAddr(tt.args.ipnet, tt.args.name)
+			s := &State{}
+			s.AssignOverlayAddr(tt.args.ipnet, tt.args.name)
 
-			if !reflect.DeepEqual(wg.OverlayAddr.IP.String(), tt.want) {
-				t.Errorf("assignOverlayAddr() set = %s, want %s", wg.OverlayAddr, tt.want)
+			if !reflect.DeepEqual(s.OverlayAddr.IP.String(), tt.want) {
+				t.Errorf("assignOverlayAddr() set = %s, want %s", s.OverlayAddr, tt.want)
 			}
 		})
 	}
@@ -43,38 +43,38 @@ func Test_wgState_assignOverlayAddr(t *testing.T) {
 
 // This is just to ensure - if we ever change the hashing function - that it spreads the results in a way that at least
 // avoids the most obvious collisions.
-func Test_wgState_assignOverlayAddr_no_obvious_collisions(t *testing.T) {
+func Test_State_AssignOverlayAddr_no_obvious_collisions(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/24")
 	assignments := make(map[string]string)
 	for _, n := range []string{"test", "test1", "test2", "1test", "2test"} {
-		wg := &WgState{}
-		wg.AssignOverlayAddr(ipnet, n)
-		if assigned, ok := assignments[wg.OverlayAddr.String()]; ok {
+		s := &State{}
+		s.AssignOverlayAddr(ipnet, n)
+		if assigned, ok := assignments[s.OverlayAddr.String()]; ok {
 			t.Errorf("IP assignment collision: hash(%s) = hash(%s)", n, assigned)
 		}
-		assignments[wg.OverlayAddr.String()] = n
+		assignments[s.OverlayAddr.String()] = n
 	}
 }
 
 // This should ensure the obvious fact that the same name should map to the same IP if called twice.
-func Test_wgState_assignOverlayAddr_consistent(t *testing.T) {
+func Test_State_AssignOverlayAddr_consistent(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/8")
-	wg1 := &WgState{}
-	wg1.AssignOverlayAddr(ipnet, "test")
-	wg2 := &WgState{}
-	wg2.AssignOverlayAddr(ipnet, "test")
-	if wg1.OverlayAddr.String() != wg2.OverlayAddr.String() {
-		t.Errorf("assignOverlayAddr() %s != %s", wg1.OverlayAddr, wg2.OverlayAddr)
+	s1 := &State{}
+	s1.AssignOverlayAddr(ipnet, "test")
+	s2 := &State{}
+	s2.AssignOverlayAddr(ipnet, "test")
+	if s1.OverlayAddr.String() != s2.OverlayAddr.String() {
+		t.Errorf("assignOverlayAddr() %s != %s", s1.OverlayAddr, s2.OverlayAddr)
 	}
 }
 
-func Test_wgState_assignOverlayAddr_repeatable(t *testing.T) {
+func Test_State_AssignOverlayAddr_repeatable(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/8")
-	wg := &WgState{}
-	wg.AssignOverlayAddr(ipnet, "test")
-	gen1 := wg.OverlayAddr.String()
-	wg.AssignOverlayAddr(ipnet, "test")
-	gen2 := wg.OverlayAddr.String()
+	s := &State{}
+	s.AssignOverlayAddr(ipnet, "test")
+	gen1 := s.OverlayAddr.String()
+	s.AssignOverlayAddr(ipnet, "test")
+	gen2 := s.OverlayAddr.String()
 	if gen1 != gen2 {
 		t.Errorf("assignOverlayAddr() %s != %s", gen1, gen2)
 	}

@@ -33,7 +33,7 @@ func main() {
 	}
 	logrus.SetLevel(logLevel)
 
-	wg, err := wg.NewWGConfig(config.Interface, config.WireguardPort)
+	wgstate, err := wg.New(config.Interface, config.WireguardPort)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
@@ -43,10 +43,10 @@ func main() {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
 
-	wg.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
+	wgstate.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
 	localNode := common.Node{}
-	localNode.OverlayAddr = wg.OverlayAddr
-	localNode.PubKey = wg.PubKey.String()
+	localNode.OverlayAddr = wgstate.OverlayAddr
+	localNode.PubKey = wgstate.PubKey.String()
 	cluster.Update(localNode)
 
 	nodec := cluster.Members() // avoid deadlocks by starting before join
@@ -76,9 +76,9 @@ func main() {
 				nodes = append(nodes, node)
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
 			}
-			if err := wg.SetUpInterface(nodes); err != nil {
+			if err := wgstate.SetUpInterface(nodes); err != nil {
 				logrus.WithError(err).Error("could not up interface")
-				wg.DownInterface()
+				wgstate.DownInterface()
 			}
 			if !config.NoEtcHosts {
 				if err := writeToEtcHosts(nodes); err != nil {
@@ -93,7 +93,7 @@ func main() {
 					logrus.WithError(err).Error("could not remove stale hosts entries")
 				}
 			}
-			if err := wg.DownInterface(); err != nil {
+			if err := wgstate.DownInterface(); err != nil {
 				logrus.WithError(err).Error("could not down interface")
 			}
 			os.Exit(0)
