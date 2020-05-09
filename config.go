@@ -55,7 +55,7 @@ func loadConfig() (*config, error) {
 		}
 		addrs, err := iface.Addrs()
 		if err != nil {
-			return nil, fmt.Errorf("no available ip address on interface %s", config.BindIface)
+			return nil, fmt.Errorf("could not get addresses for interface %s: %w", config.BindIface, err)
 		}
 		if len(addrs) > 0 {
 			if addr, ok := addrs[0].(*net.IPNet); ok {
