@@ -21,6 +21,7 @@ const KeyLen = 32
 type Cluster struct {
 	LocalName string // used to avoid LocalNode(); should not change
 	ml        *memberlist.Memberlist
+	mlConfig  *memberlist.Config
 	localNode common.Node
 	state     *State
 	events    chan memberlist.NodeEvent
@@ -57,15 +58,13 @@ func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsNam
 	cluster := Cluster{
 		LocalName: ml.LocalNode().Name,
 		ml:        ml,
+		mlConfig:  mlConfig,
 		// The big channel buffer is a work-around for https://github.com/hashicorp/memberlist/issues/23
 		// More than this many simultaneous events will deadlock cluster.members()
 		events: make(chan memberlist.NodeEvent, 100),
 		state:  state,
 	}
-	mlConfig.Conflict = &cluster
-	mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: cluster.events}
-	mlConfig.Delegate = &cluster
-
+	cluster.setupDelegate()
 	return &cluster, nil
 }
 
@@ -101,6 +100,7 @@ func (c *Cluster) Leave() {
 // configuration
 func (c *Cluster) Update(localNode common.Node) {
 	c.localNode = localNode
+	c.setupDelegate()
 	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 }
 
@@ -142,6 +142,13 @@ func (c *Cluster) Members() <-chan []common.Node {
 		}
 	}()
 	return changes
+}
+
+func (c *Cluster) setupDelegate() {
+	delegate := delegateNode{&c.localNode}
+	c.mlConfig.Conflict = &delegate
+	c.mlConfig.Delegate = &delegate
+	c.mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: c.events}
 }
 
 func computeClusterKey(state *State, clusterKey []byte) ([]byte, error) {

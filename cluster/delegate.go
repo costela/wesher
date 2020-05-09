@@ -1,20 +1,26 @@
 package cluster
 
 import (
+	"github.com/costela/wesher/common"
 	"github.com/hashicorp/memberlist"
 	"github.com/sirupsen/logrus"
 )
 
+// DelegateNode implements the memberlist delegation interface
+type delegateNode struct {
+	*common.Node
+}
+
 // NotifyConflict implements the memberlist deletage interface
-func (c *Cluster) NotifyConflict(node, other *memberlist.Node) {
+func (n *delegateNode) NotifyConflict(node, other *memberlist.Node) {
 	logrus.Errorf("node name conflict detected: %s", other.Name)
 }
 
 // NodeMeta implements the memberlist deletage interface
 // Metadata is provided by the local node settings, encoding is handled
 // by the node implementation directly
-func (c *Cluster) NodeMeta(limit int) []byte {
-	encoded, err := c.localNode.Encode(limit)
+func (n *delegateNode) NodeMeta(limit int) []byte {
+	encoded, err := n.Encode(limit)
 	if err != nil {
 		logrus.Errorf("failed to encode local node: %s", err)
 		return nil
@@ -23,13 +29,13 @@ func (c *Cluster) NodeMeta(limit int) []byte {
 }
 
 // NotifyMsg implements the memberlist deletage interface
-func (c *Cluster) NotifyMsg([]byte) {}
+func (n *delegateNode) NotifyMsg([]byte) {}
 
 // GetBroadcasts implements the memberlist deletage interface
-func (c *Cluster) GetBroadcasts(overhead, limit int) [][]byte { return nil }
+func (n *delegateNode) GetBroadcasts(overhead, limit int) [][]byte { return nil }
 
 // LocalState implements the memberlist deletage interface
-func (c *Cluster) LocalState(join bool) []byte { return nil }
+func (n *delegateNode) LocalState(join bool) []byte { return nil }
 
 // MergeRemoteState implements the memberlist deletage interface
-func (c *Cluster) MergeRemoteState(buf []byte, join bool) {}
+func (n *delegateNode) MergeRemoteState(buf []byte, join bool) {}
