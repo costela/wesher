@@ -51,7 +51,7 @@ func loadConfig() (*config, error) {
 		// Compute the actual bind address based on the provided interface
 		iface, err := net.InterfaceByName(config.BindIface)
 		if err != nil {
-			return nil, fmt.Errorf("cannot find interface %s", config.BindIface)
+			return nil, fmt.Errorf("could not get interface by name %s: %w", config.BindIface, err)
 		}
 		addrs, err := iface.Addrs()
 		if err != nil {
