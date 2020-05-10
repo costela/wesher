@@ -22,7 +22,7 @@ func Test_state_save_soad(t *testing.T) {
 		},
 	}
 
-	cluster.saveState()
+	cluster.state.save()
 	loaded := &state{}
 	loadState(loaded)
 
