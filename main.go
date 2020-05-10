@@ -50,11 +50,12 @@ func main() {
 	}
 
 	// Assign a local node address and propagate it to the cluster
-	wgstate.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.LocalName)
-	localNode := common.Node{}
+	wgstate.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.Name())
+	localNode := &common.Node{}
 	localNode.OverlayAddr = wgstate.OverlayAddr
 	localNode.PubKey = wgstate.PubKey.String()
-	cluster.Update(localNode)
+	cluster.SetLocalNode(localNode)
+	cluster.Update()
 
 	// Join the cluster
 	nodec := cluster.Members() // avoid deadlocks by starting before join
