@@ -8,7 +8,7 @@ import (
 	"github.com/costela/wesher/common"
 )
 
-func Test_State_Save_Load(t *testing.T) {
+func Test_state_save_soad(t *testing.T) {
 	key := "abcdefghijklmnopqrstuvwxyzABCDEF"
 	node := common.Node{
 		Name: "node",
@@ -16,14 +16,14 @@ func Test_State_Save_Load(t *testing.T) {
 	}
 
 	cluster := Cluster{
-		state: &State{
+		state: &state{
 			ClusterKey: []byte(key),
 			Nodes:      []common.Node{node},
 		},
 	}
 
 	cluster.saveState()
-	loaded := &State{}
+	loaded := &state{}
 	loadState(loaded)
 
 	if !reflect.DeepEqual(cluster.state, loaded) {
