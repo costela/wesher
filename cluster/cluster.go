@@ -23,14 +23,14 @@ type Cluster struct {
 	ml        *memberlist.Memberlist
 	mlConfig  *memberlist.Config
 	localNode common.Node
-	state     *State
+	state     *state
 	events    chan memberlist.NodeEvent
 }
 
 // New is used to create a new Cluster instance
 // The returned instance is ready to be updated with the local node settings then joined
 func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool) (*Cluster, error) {
-	state := &State{}
+	state := &state{}
 	if !init {
 		loadState(state)
 	}
@@ -151,7 +151,7 @@ func (c *Cluster) setupDelegate() {
 	c.mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: c.events}
 }
 
-func computeClusterKey(state *State, clusterKey []byte) ([]byte, error) {
+func computeClusterKey(state *state, clusterKey []byte) ([]byte, error) {
 	if len(clusterKey) == 0 {
 		clusterKey = state.ClusterKey
 	}

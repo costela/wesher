@@ -11,7 +11,7 @@ import (
 )
 
 // State keeps track of information needed to rejoin the cluster
-type State struct {
+type state struct {
 	ClusterKey []byte
 	Nodes      []common.Node
 }
@@ -31,7 +31,7 @@ func (c *Cluster) saveState() error {
 	return ioutil.WriteFile(statePath, stateOut, 0600)
 }
 
-func loadState(cs *State) {
+func loadState(cs *state) {
 	content, err := ioutil.ReadFile(statePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -41,7 +41,7 @@ func loadState(cs *State) {
 	}
 
 	// avoid partially unmarshalled content by using a temp var
-	csTmp := &State{}
+	csTmp := &state{}
 	if err := json.Unmarshal(content, csTmp); err != nil {
 		logrus.Warnf("could not decode state: %s", err)
 	} else {
