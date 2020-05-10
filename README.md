@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/costela/wesher.svg?branch=master)](https://travis-ci.org/costela/wesher)
+[![Build Status](https://travis-ci.com/costela/wesher.svg?branch=master)](https://travis-ci.com/costela/wesher)
 [![Go Report Card](https://goreportcard.com/badge/github.com/costela/wesher)](https://goreportcard.com/report/github.com/costela/wesher)
 
 # wesher
