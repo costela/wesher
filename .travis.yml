@@ -1,6 +1,6 @@
 language: go
 
-dist: xenial
+dist: bionic
 
 go:
   - "1.13"
