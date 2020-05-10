@@ -35,13 +35,13 @@ func main() {
 	logrus.SetLevel(logLevel)
 
 	// Create the wireguard and cluster configuration
-	wgstate, err := wg.New(config.Interface, config.WireguardPort)
-	if err != nil {
-		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
-	}
 	cluster, err := cluster.New(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
+	}
+	wgstate, err := wg.New(config.Interface, config.WireguardPort, (*net.IPNet)(config.OverlayNet), cluster.Name())
+	if err != nil {
+		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
 
 	// Prepare the /etc/hosts writer
@@ -50,10 +50,8 @@ func main() {
 	}
 
 	// Assign a local node address and propagate it to the cluster
-	wgstate.AssignOverlayAddr((*net.IPNet)(config.OverlayNet), cluster.Name())
 	localNode := &common.Node{}
-	localNode.OverlayAddr = wgstate.OverlayAddr
-	localNode.PubKey = wgstate.PubKey.String()
+	wgstate.UpdateNode(localNode)
 	cluster.SetLocalNode(localNode)
 	cluster.Update()
 
