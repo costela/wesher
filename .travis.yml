@@ -14,8 +14,9 @@ services:
   - docker
 
 env:
-  - CGO_ENABLED=0
-  - GO111MODULE=on
+  global:
+    - CGO_ENABLED=0
+    - GO111MODULE=on
 
 script: go test -v ./...
 
