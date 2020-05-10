@@ -18,12 +18,12 @@ type state struct {
 
 const statePath = "/var/lib/wesher/state.json"
 
-func (c *Cluster) saveState() error {
+func (s *state) save() error {
 	if err := os.MkdirAll(path.Dir(statePath), 0700); err != nil {
 		return err
 	}
 
-	stateOut, err := json.MarshalIndent(c.state, "", "  ")
+	stateOut, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}

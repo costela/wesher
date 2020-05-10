@@ -90,7 +90,7 @@ func (c *Cluster) Join(addrs []string) error {
 
 // Leave saves the current state before leaving, then leaves the cluster
 func (c *Cluster) Leave() {
-	c.saveState()
+	c.state.save()
 	c.ml.Leave(10 * time.Second)
 	c.ml.Shutdown() //nolint: errcheck
 }
@@ -138,7 +138,7 @@ func (c *Cluster) Members() <-chan []common.Node {
 			}
 			c.state.Nodes = nodes
 			changes <- nodes
-			c.saveState()
+			c.state.save()
 		}
 	}()
 	return changes
