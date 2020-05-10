@@ -18,9 +18,9 @@ func Test_Node_Encode_Decode(t *testing.T) {
 				PubKey:      pubKey,
 			},
 		}
-		encoded, _ := node.Encode(1024)
+		encoded, _ := node.EncodeMeta(1024)
 		new := Node{Meta: encoded}
-		new.Decode()
+		new.DecodeMeta()
 		if !reflect.DeepEqual(node.nodeMeta, new.nodeMeta) {
 			t.Errorf("node encoding then decoding mismatch: %s / %s", node.nodeMeta, new.nodeMeta)
 		}
