@@ -13,11 +13,6 @@ os:
 services:
   - docker
 
-matrix:
-  allow_failures:
-    - go: "master"
-  fast_finish: true
-
 env:
   - GO111MODULE=on
 
@@ -35,6 +30,9 @@ stages:
   - release
 
 jobs:
+  allow_failures:
+    - go: "master"
+  fast_finish: true
   include:
     - stage: cache
       script: go mod download -json
