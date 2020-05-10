@@ -14,13 +14,14 @@ services:
   - docker
 
 env:
+  - CGO_ENABLED=0
   - GO111MODULE=on
 
 script: go test -v ./...
 
 cache:
   directories:
-    - $HOME/gopath/pkg/mod
+    - $GOPATH/pkg/mod
 
 install: true  # skip, handled by "cache" stage
 
