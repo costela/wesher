@@ -87,7 +87,7 @@ func (s *State) DownInterface() error {
 	return netlink.LinkDel(link)
 }
 
-// SetUpInterface creates and setup the associated network interface
+// SetUpInterface creates and sets up the associated network interface
 func (s *State) SetUpInterface(nodes []common.Node) error {
 	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: s.iface}}); err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "could not create interface %s", s.iface)
