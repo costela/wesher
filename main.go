@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-	"github.com/costela/wesher/etchosts"
 	"github.com/sirupsen/logrus"
+
+	"github.com/costela/wesher/etchosts"
 )
 
 var version = "dev"
