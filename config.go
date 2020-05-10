@@ -6,6 +6,7 @@ import (
 
 	"github.com/costela/wesher/cluster"
 	"github.com/hashicorp/go-sockaddr"
+	"github.com/pkg/errors"
 	"github.com/stevenroose/gonfig"
 )
 
@@ -50,11 +51,11 @@ func loadConfig() (*config, error) {
 		// Compute the actual bind address based on the provided interface
 		iface, err := net.InterfaceByName(config.BindIface)
 		if err != nil {
-			return nil, fmt.Errorf("could not get interface by name %s: %w", config.BindIface, err)
+			return nil, errors.Wrapf(err, "could not get interface by name %s", config.BindIface)
 		}
 		addrs, err := iface.Addrs()
 		if err != nil {
-			return nil, fmt.Errorf("could not get addresses for interface %s: %w", config.BindIface, err)
+			return nil, errors.Wrapf(err, "could not get addresses for interface %s", config.BindIface)
 		}
 		if len(addrs) > 0 {
 			if addr, ok := addrs[0].(*net.IPNet); ok {
