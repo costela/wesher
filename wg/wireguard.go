@@ -25,7 +25,7 @@ type State struct {
 // New creates a new Wesher Wireguard state
 // The Wireguard keys are generated for every new interface
 // The interface must later be setup using SetUpInterface
-func New(iface string, port int) (*State, error) {
+func New(iface string, port int, ipnet *net.IPNet, name string) (*State, error) {
 	client, err := wgctrl.New()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not instantiate wireguard client")
@@ -44,15 +44,23 @@ func New(iface string, port int) (*State, error) {
 		PrivKey: privKey,
 		PubKey:  pubKey,
 	}
+	state.assignOverlayAddr(ipnet, name)
+
 	return &state, nil
 }
 
-// AssignOverlayAddr assigns a new address to the interface
+// UpdateNode populates a node instance with wireguard specific fields
+func (s *State) UpdateNode(node *common.Node) {
+	node.OverlayAddr = s.OverlayAddr
+	node.PubKey = s.PubKey.String()
+}
+
+// assignOverlayAddr assigns a new address to the interface
 // The address is assigned inside the provided network and depends on the
 // provided name deterministically
 // Currently, the address is assigned by hashing the name and mapping that
 // hash in the target network space
-func (s *State) AssignOverlayAddr(ipnet *net.IPNet, name string) {
+func (s *State) assignOverlayAddr(ipnet *net.IPNet, name string) {
 	// TODO: this is way too brittle and opaque
 	bits, size := ipnet.Mask.Size()
 	ip := make([]byte, len(ipnet.IP))
