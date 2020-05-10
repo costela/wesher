@@ -80,7 +80,7 @@ func main() {
 			hosts := make(map[string][]string, len(rawNodes))
 			logrus.Info("cluster members:\n")
 			for _, node := range rawNodes {
-				if err := node.Decode(); err != nil {
+				if err := node.DecodeMeta(); err != nil {
 					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
 					continue
 				}

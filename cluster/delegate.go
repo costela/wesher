@@ -20,7 +20,7 @@ func (n *delegateNode) NotifyConflict(node, other *memberlist.Node) {
 // Metadata is provided by the local node settings, encoding is handled
 // by the node implementation directly
 func (n *delegateNode) NodeMeta(limit int) []byte {
-	encoded, err := n.Encode(limit)
+	encoded, err := n.EncodeMeta(limit)
 	if err != nil {
 		logrus.Errorf("failed to encode local node: %s", err)
 		return nil
