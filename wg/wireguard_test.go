@@ -32,7 +32,7 @@ func Test_State_AssignOverlayAddr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &State{}
-			s.AssignOverlayAddr(tt.args.ipnet, tt.args.name)
+			s.assignOverlayAddr(tt.args.ipnet, tt.args.name)
 
 			if !reflect.DeepEqual(s.OverlayAddr.IP.String(), tt.want) {
 				t.Errorf("assignOverlayAddr() set = %s, want %s", s.OverlayAddr, tt.want)
@@ -48,7 +48,7 @@ func Test_State_AssignOverlayAddr_no_obvious_collisions(t *testing.T) {
 	assignments := make(map[string]string)
 	for _, n := range []string{"test", "test1", "test2", "1test", "2test"} {
 		s := &State{}
-		s.AssignOverlayAddr(ipnet, n)
+		s.assignOverlayAddr(ipnet, n)
 		if assigned, ok := assignments[s.OverlayAddr.String()]; ok {
 			t.Errorf("IP assignment collision: hash(%s) = hash(%s)", n, assigned)
 		}
@@ -60,9 +60,9 @@ func Test_State_AssignOverlayAddr_no_obvious_collisions(t *testing.T) {
 func Test_State_AssignOverlayAddr_consistent(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/8")
 	s1 := &State{}
-	s1.AssignOverlayAddr(ipnet, "test")
+	s1.assignOverlayAddr(ipnet, "test")
 	s2 := &State{}
-	s2.AssignOverlayAddr(ipnet, "test")
+	s2.assignOverlayAddr(ipnet, "test")
 	if s1.OverlayAddr.String() != s2.OverlayAddr.String() {
 		t.Errorf("assignOverlayAddr() %s != %s", s1.OverlayAddr, s2.OverlayAddr)
 	}
@@ -71,9 +71,9 @@ func Test_State_AssignOverlayAddr_consistent(t *testing.T) {
 func Test_State_AssignOverlayAddr_repeatable(t *testing.T) {
 	_, ipnet, _ := net.ParseCIDR("10.0.0.0/8")
 	s := &State{}
-	s.AssignOverlayAddr(ipnet, "test")
+	s.assignOverlayAddr(ipnet, "test")
 	gen1 := s.OverlayAddr.String()
-	s.AssignOverlayAddr(ipnet, "test")
+	s.assignOverlayAddr(ipnet, "test")
 	gen2 := s.OverlayAddr.String()
 	if gen1 != gen2 {
 		t.Errorf("assignOverlayAddr() %s != %s", gen1, gen2)
