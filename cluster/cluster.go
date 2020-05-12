@@ -22,6 +22,7 @@ type Cluster struct {
 	ml        *memberlist.Memberlist
 	mlConfig  *memberlist.Config
 	localNode *common.Node
+	LocalName string
 	state     *state
 	events    chan memberlist.NodeEvent
 }
@@ -55,14 +56,14 @@ func New(init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsNam
 	}
 
 	cluster := Cluster{
-		ml:       ml,
-		mlConfig: mlConfig,
+		ml:        ml,
+		mlConfig:  mlConfig,
+		LocalName: ml.LocalNode().Name,
 		// The big channel buffer is a work-around for https://github.com/hashicorp/memberlist/issues/23
 		// More than this many simultaneous events will deadlock cluster.members()
 		events: make(chan memberlist.NodeEvent, 100),
 		state:  state,
 	}
-	cluster.SetLocalNode(&common.Node{})
 	return &cluster, nil
 }
 
@@ -99,7 +100,13 @@ func (c *Cluster) Leave() {
 }
 
 // Update gossips the local node configuration, propagating any change
-func (c *Cluster) Update() {
+func (c *Cluster) Update(localNode *common.Node) {
+	c.localNode = localNode
+	// wrap in a delegateNode instance for memberlist.Delegate implementation
+	delegate := &delegateNode{c.localNode}
+	c.mlConfig.Conflict = delegate
+	c.mlConfig.Delegate = delegate
+	c.mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: c.events}
 	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
 }
 
@@ -111,7 +118,7 @@ func (c *Cluster) Members() <-chan []common.Node {
 	go func() {
 		for {
 			event := <-c.events
-			if event.Node.Name == c.localNode.Name {
+			if event.Node.Name == c.LocalName {
 				// ignore events about ourselves
 				continue
 			}
@@ -126,7 +133,7 @@ func (c *Cluster) Members() <-chan []common.Node {
 
 			nodes := make([]common.Node, 0)
 			for _, n := range c.ml.Members() {
-				if n.Name == c.localNode.Name {
+				if n.Name == c.LocalName {
 					continue
 				}
 				nodes = append(nodes, common.Node{
@@ -141,18 +148,6 @@ func (c *Cluster) Members() <-chan []common.Node {
 		}
 	}()
 	return changes
-}
-
-// SetLocalNode takes a new local node configuration into account
-// It also sets this node as the memberlist.Delegate implementation
-func (c *Cluster) SetLocalNode(localNode *common.Node) {
-	c.localNode = localNode
-	c.localNode.Name = c.ml.LocalNode().Name
-	// wrap in a delegateNode instance for memberlist.Delegate implementation
-	delegate := &delegateNode{c.localNode}
-	c.mlConfig.Conflict = delegate
-	c.mlConfig.Delegate = delegate
-	c.mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: c.events}
 }
 
 func computeClusterKey(state *state, clusterKey []byte) ([]byte, error) {

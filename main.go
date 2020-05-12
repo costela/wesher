@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
-	wgstate, err := wg.New(config.Interface, config.WireguardPort, (*net.IPNet)(config.OverlayNet), cluster.Name())
+	wgstate, localNode, err := wg.New(config.Interface, config.WireguardPort, (*net.IPNet)(config.OverlayNet), cluster.LocalName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
@@ -49,13 +49,8 @@ func main() {
 		Logger: logrus.StandardLogger(),
 	}
 
-	// Assign a local node address and propagate it to the cluster
-	localNode := &common.Node{}
-	wgstate.UpdateNode(localNode)
-	cluster.SetLocalNode(localNode)
-	cluster.Update()
-
 	// Join the cluster
+	cluster.Update(localNode)
 	nodec := cluster.Members() // avoid deadlocks by starting before join
 	if err := backoff.RetryNotify(
 		func() error { return cluster.Join(config.Join) },
