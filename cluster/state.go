@@ -16,7 +16,8 @@ type state struct {
 	Nodes      []common.Node
 }
 
-const statePath = "/var/lib/wesher/state.json"
+// TODO: this should be replaced by a configurable path later
+var statePath = "/var/lib/wesher/state.json"
 
 func (s *state) save() error {
 	if err := os.MkdirAll(path.Dir(statePath), 0700); err != nil {
