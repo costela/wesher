@@ -9,6 +9,7 @@ import (
 )
 
 func Test_state_save_soad(t *testing.T) {
+	statePath = "/tmp/wesher.json"
 	key := "abcdefghijklmnopqrstuvwxyzABCDEF"
 	node := common.Node{
 		Name: "node",
