@@ -22,7 +22,9 @@ func Test_state_save_soad(t *testing.T) {
 		},
 	}
 
-	cluster.state.save()
+	if err := cluster.state.save(); err != nil {
+		t.Error(err)
+	}
 	loaded := &state{}
 	loadState(loaded)
 
