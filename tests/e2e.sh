@@ -100,6 +100,35 @@ test_cluster_simultaneous_start() {
     stop_test_container test1-orig
 }
 
+test_multiple_clusters_restart() {
+    cluster1='--cluster-port 7946 --wireguard-port 51820 --banner cluster1 --state-path /var/lib/wesher/cluster1.json --interface wgoverlay --overlay-net 10.10.0.0/16'
+    cluster2='--cluster-port 7947 --wireguard-port 51821 --banner cluster2 --state-path /var/lib/wesher/cluster2.json --interface wgoverlay2 --overlay-net 10.11.0.0/16'
+    setup_wireguard='wireguard-go wgoverlay2 2>/dev/null >/dev/null'
+    join_cluster2="nohup /app/wesher --cluster-key 'ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc=' --join test2-orig $cluster2 2>/dev/null &"
+    
+    run_test_container test1-orig test1 --init $cluster1
+    run_test_container test2-orig test2 --init $cluster2
+    run_test_container test3-orig test3 --join test1-orig $cluster1
+    docker exec test3-orig bash -c "$setup_wireguard; $join_cluster2"
+    
+    sleep 3
+
+    docker stop test3-orig
+    docker start test3-orig
+    docker exec test3-orig bash -c "$setup_wireguard; $join_cluster2"
+
+    sleep 3
+
+    docker exec test3-orig ping -c1 -W1 test1 || (docker logs test1-orig; docker logs test3-orig; false)
+    docker exec test3-orig ping -c1 -W1 test2 || (docker logs test2-orig; docker logs test3-orig; false)
+    docker exec test1-orig ping -c1 -W1 test3 || (docker logs test1-orig; docker logs test3-orig; false)
+    docker exec test2-orig ping -c1 -W1 test3 || (docker logs test2-orig; docker logs test3-orig; false)
+
+    stop_test_container test3-orig
+    stop_test_container test2-orig
+    stop_test_container test1-orig
+}
+
 for test_func in $(declare -F | grep -Eo '\<test_.*$'); do
     echo "--- Running $test_func:"
     $test_func
