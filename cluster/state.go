@@ -16,10 +16,12 @@ type state struct {
 	Nodes      []common.Node
 }
 
-// TODO: this should be replaced by a configurable path later
-var statePath = "/var/lib/wesher/state.json"
+const defaultStatePath = "/var/lib/wesher/state.json"
 
-func (s *state) save() error {
+func (s *state) save(statePath string) error {
+	if statePath == "" {
+		statePath = defaultStatePath
+	}
 	if err := os.MkdirAll(path.Dir(statePath), 0700); err != nil {
 		return err
 	}
@@ -32,7 +34,10 @@ func (s *state) save() error {
 	return ioutil.WriteFile(statePath, stateOut, 0600)
 }
 
-func loadState(cs *state) {
+func loadState(cs *state, statePath string) {
+	if statePath == "" {
+		statePath = defaultStatePath
+	}
 	content, err := ioutil.ReadFile(statePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
