@@ -46,7 +46,7 @@ func main() {
 
 	// Prepare the /etc/hosts writer
 	hostsFile := &etchosts.EtcHosts{
-		Banner: "# ! managed automatically for wesher " + config.Banner,
+		Banner: "# ! managed automatically by wesher " + config.Banner,
 		Logger: logrus.StandardLogger(),
 	}
 
