@@ -9,7 +9,7 @@ import (
 )
 
 func Test_state_save_soad(t *testing.T) {
-	statePath := "/tmp/wesher.json"
+	defaultStatePath = "/tmp/%s.json"
 	key := "abcdefghijklmnopqrstuvwxyzABCDEF"
 	node := common.Node{
 		Name: "node",
@@ -23,11 +23,11 @@ func Test_state_save_soad(t *testing.T) {
 		},
 	}
 
-	if err := cluster.state.save(statePath); err != nil {
+	if err := cluster.state.save("test"); err != nil {
 		t.Error(err)
 	}
 	loaded := &state{}
-	loadState(loaded, statePath)
+	loadState(loaded, "test")
 
 	if !reflect.DeepEqual(cluster.state, loaded) {
 		t.Errorf("cluster state save then reload mistmatch: %s / %s", cluster.state, loaded)

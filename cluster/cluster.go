@@ -19,21 +19,21 @@ const KeyLen = 32
 
 // Cluster represents a running cluster configuration
 type Cluster struct {
+	name      string
 	ml        *memberlist.Memberlist
 	mlConfig  *memberlist.Config
 	localNode *common.Node
 	LocalName string
-	statePath string
 	state     *state
 	events    chan memberlist.NodeEvent
 }
 
 // New is used to create a new Cluster instance
 // The returned instance is ready to be updated with the local node settings then joined
-func New(init bool, clusterKey []byte, bindAddr string, bindPort int, statePath string, useIPAsName bool) (*Cluster, error) {
+func New(name string, init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool) (*Cluster, error) {
 	state := &state{}
 	if !init {
-		loadState(state, statePath)
+		loadState(state, name)
 	}
 
 	clusterKey, err := computeClusterKey(state, clusterKey)
@@ -57,14 +57,14 @@ func New(init bool, clusterKey []byte, bindAddr string, bindPort int, statePath 
 	}
 
 	cluster := Cluster{
+		name:      name,
 		ml:        ml,
 		mlConfig:  mlConfig,
 		LocalName: ml.LocalNode().Name,
 		// The big channel buffer is a work-around for https://github.com/hashicorp/memberlist/issues/23
 		// More than this many simultaneous events will deadlock cluster.members()
-		events:    make(chan memberlist.NodeEvent, 100),
-		state:     state,
-		statePath: statePath,
+		events: make(chan memberlist.NodeEvent, 100),
+		state:  state,
 	}
 	return &cluster, nil
 }
@@ -96,7 +96,7 @@ func (c *Cluster) Join(addrs []string) error {
 
 // Leave saves the current state before leaving, then leaves the cluster
 func (c *Cluster) Leave() {
-	c.state.save(c.statePath)
+	c.state.save(c.name)
 	c.ml.Leave(10 * time.Second)
 	c.ml.Shutdown() //nolint: errcheck
 }
@@ -146,7 +146,7 @@ func (c *Cluster) Members() <-chan []common.Node {
 			}
 			c.state.Nodes = nodes
 			changes <- nodes
-			c.state.save(c.statePath)
+			c.state.save(c.name)
 		}
 	}()
 	return changes

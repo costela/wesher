@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -16,12 +17,10 @@ type state struct {
 	Nodes      []common.Node
 }
 
-const defaultStatePath = "/var/lib/wesher/state.json"
+var defaultStatePath = "/var/lib/wesher/%s.json"
 
-func (s *state) save(statePath string) error {
-	if statePath == "" {
-		statePath = defaultStatePath
-	}
+func (s *state) save(clusterName string) error {
+	statePath := fmt.Sprintf(defaultStatePath, clusterName)
 	if err := os.MkdirAll(path.Dir(statePath), 0700); err != nil {
 		return err
 	}
@@ -34,10 +33,8 @@ func (s *state) save(statePath string) error {
 	return ioutil.WriteFile(statePath, stateOut, 0600)
 }
 
-func loadState(cs *state, statePath string) {
-	if statePath == "" {
-		statePath = defaultStatePath
-	}
+func loadState(cs *state, clusterName string) {
+	statePath := fmt.Sprintf(defaultStatePath, clusterName)
 	content, err := ioutil.ReadFile(statePath)
 	if err != nil {
 		if !os.IsNotExist(err) {

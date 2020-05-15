@@ -35,7 +35,7 @@ func main() {
 	logrus.SetLevel(logLevel)
 
 	// Create the wireguard and cluster configuration
-	cluster, err := cluster.New(config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.StatePath, config.UseIPAsName)
+	cluster, err := cluster.New(config.ClusterName, config.Init, config.ClusterKey, config.BindAddr, config.ClusterPort, config.UseIPAsName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
@@ -46,7 +46,7 @@ func main() {
 
 	// Prepare the /etc/hosts writer
 	hostsFile := &etchosts.EtcHosts{
-		Banner: "# ! managed automatically by wesher " + config.Banner,
+		Banner: "# ! managed automatically by wesher " + config.ClusterName,
 		Logger: logrus.StandardLogger(),
 	}
 

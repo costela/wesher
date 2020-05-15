@@ -14,8 +14,7 @@ type config struct {
 	ClusterKey    []byte   `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
 	Join          []string `desc:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
 	Init          bool     `desc:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
-	Banner        string   `id:"banner" desc:"a string appended to /etc/hosts banner to discriminate between multiple running clusters"`
-	StatePath     string   `id:"state-path" desc:"path where the cluster state is stored; optional, depends on cluster name if not set"`
+	ClusterName   string   `id:"cluster-name" desc:"identifier for the wesher cluster; can be used to peer with multiple clusters" default:"default"`
 	BindAddr      string   `id:"bind-addr" desc:"IP address to bind to for cluster membership traffic (cannot be used with --bind-iface)"`
 	BindIface     string   `id:"bind-iface" desc:"Interface to bind to for cluster membership traffic (cannot be used with --bind-addr)"`
 	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`

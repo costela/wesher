@@ -101,8 +101,8 @@ test_cluster_simultaneous_start() {
 }
 
 test_multiple_clusters_restart() {
-    cluster1='--cluster-port 7946 --wireguard-port 51820 --banner cluster1 --state-path /var/lib/wesher/cluster1.json --interface wgoverlay --overlay-net 10.10.0.0/16'
-    cluster2='--cluster-port 7947 --wireguard-port 51821 --banner cluster2 --state-path /var/lib/wesher/cluster2.json --interface wgoverlay2 --overlay-net 10.11.0.0/16'
+    cluster1='--cluster-port 7946 --wireguard-port 51820 --cluster-name cluster1 --interface wgoverlay --overlay-net 10.10.0.0/16'
+    cluster2='--cluster-port 7947 --wireguard-port 51821 --cluster-name cluster2 --interface wgoverlay2 --overlay-net 10.11.0.0/16'
     setup_wireguard='wireguard-go wgoverlay2 2>/dev/null >/dev/null'
     join_cluster2="nohup /app/wesher --cluster-key 'ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc=' --join test2-orig $cluster2 2>/dev/null &"
     
