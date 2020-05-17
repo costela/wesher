@@ -9,7 +9,7 @@ import (
 )
 
 func Test_state_save_soad(t *testing.T) {
-	defaultStatePath = "/tmp/%s.json"
+	statePathTemplate = "/tmp/%s.json"
 	key := "abcdefghijklmnopqrstuvwxyzABCDEF"
 	node := common.Node{
 		Name: "node",
