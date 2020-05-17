@@ -17,10 +17,12 @@ type state struct {
 	Nodes      []common.Node
 }
 
-var defaultStatePath = "/var/lib/wesher/%s.json"
+var statePathTemplate = "/var/lib/wesher/%s.json"
+
+const deprecatedStatePath = "/var/lib/wesher/state.json"
 
 func (s *state) save(clusterName string) error {
-	statePath := fmt.Sprintf(defaultStatePath, clusterName)
+	statePath := fmt.Sprintf(statePathTemplate, clusterName)
 	if err := os.MkdirAll(path.Dir(statePath), 0700); err != nil {
 		return err
 	}
@@ -34,13 +36,21 @@ func (s *state) save(clusterName string) error {
 }
 
 func loadState(cs *state, clusterName string) {
-	statePath := fmt.Sprintf(defaultStatePath, clusterName)
+	statePath := fmt.Sprintf(statePathTemplate, clusterName)
 	content, err := ioutil.ReadFile(statePath)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			logrus.Warnf("could not open state in %s: %s", statePath, err)
+		// try the deprecated pre 0.3 state path, it will later
+		// be saved to the proper path
+		if os.IsNotExist(err) {
+			content, err = ioutil.ReadFile(deprecatedStatePath)
 		}
-		return
+
+		if err != nil {
+			if !os.IsNotExist(err) {
+				logrus.Warnf("could not open state in %s: %s", statePath, err)
+			}
+			return
+		}
 	}
 
 	// avoid partially unmarshalled content by using a temp var
