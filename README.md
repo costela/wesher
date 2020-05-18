@@ -148,12 +148,12 @@ All options can be passed either as command-line flags or environment variables:
 
 ## Running multiple clusters
 
-Wesher supports having a node be a member of multiple clusters. The following settings must be explicitely set to non-conflicting values:
-- `--interface`, so that wireguard does not mix up traffic, the interface name is also used for naming the state file
-- `--cluster-port` or `--bind-addr` or `--bind-iface`, so that wesher can properly bind to its port
-- `--wireguard-port`, so that wireguard can properly bind to its port
-
-One should also use different overlay networks. Even though using the same network on different devices will work in some cases, it is not the intended use.
+```suggestion
+To make a node be a member of multiple clusters, simply start multiple wesher instances. The following settings must be explicitly set to different values for each instance:
+- `--interface`
+- either `--cluster-port`, or `--bind-addr` or `--bind-iface`
+- `--wireguard-port`
+- `--overlay-net` (optional, but recommended to avoid node address conflicts)
 
 Finally, one should use different cluster keys for different clusters, as a security best practice.
 
