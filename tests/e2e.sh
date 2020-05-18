@@ -101,21 +101,19 @@ test_cluster_simultaneous_start() {
 }
 
 test_multiple_clusters_restart() {
-    cluster1='--cluster-port 7946 --wireguard-port 51820 --interface wgoverlay --overlay-net 10.10.0.0/16'
-    cluster2='--cluster-port 7947 --wireguard-port 51821 --interface wgoverlay2 --overlay-net 10.11.0.0/16'
-    setup_wireguard='wireguard-go wgoverlay2 2>/dev/null >/dev/null'
-    join_cluster2="nohup /app/wesher --cluster-key 'ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc=' --join test2-orig $cluster2 2>/dev/null &"
+    cluster1='--cluster-port 7946 --wireguard-port 51820 --interface wg1 --overlay-net 10.10.0.0/16'
+    cluster2='--cluster-port 7947 --wireguard-port 51821 --interface wg2 --overlay-net 10.11.0.0/16'
     
     run_test_container test1-orig test1 --init $cluster1
     run_test_container test2-orig test2 --init $cluster2
     run_test_container test3-orig test3 --join test1-orig $cluster1
-    docker exec test3-orig bash -c "$setup_wireguard; $join_cluster2"
+    docker exec test3-orig bash -c "/entrypoint.sh --join test2-orig $cluster2 2>/dev/null &"
     
     sleep 3
 
     docker stop test3-orig
     docker start test3-orig
-    docker exec test3-orig bash -c "$setup_wireguard; $join_cluster2"
+    docker exec test3-orig bash -c "/entrypoint.sh $cluster2 2>/dev/null &"
 
     sleep 3
 
