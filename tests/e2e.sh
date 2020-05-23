@@ -107,13 +107,13 @@ test_multiple_clusters_restart() {
     run_test_container test1-orig test1 --init $cluster1
     run_test_container test2-orig test2 --init $cluster2
     run_test_container test3-orig test3 --join test1-orig $cluster1
-    docker exec test3-orig bash -c "/entrypoint.sh --join test2-orig $cluster2 2>/dev/null &"
+    docker exec -d test3-orig bash -c "/entrypoint.sh --join test2-orig $cluster2"
     
     sleep 3
 
     docker stop test3-orig
     docker start test3-orig
-    docker exec test3-orig bash -c "/entrypoint.sh $cluster2 2>/dev/null &"
+    docker exec -d test3-orig bash -c "/entrypoint.sh $cluster2"
 
     sleep 3
 
