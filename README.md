@@ -148,14 +148,15 @@ All options can be passed either as command-line flags or environment variables:
 
 ## Running multiple clusters
 
-```suggestion
-To make a node be a member of multiple clusters, simply start multiple wesher instances. The following settings must be explicitly set to different values for each instance:
+To make a node be a member of multiple clusters, simply start multiple wesher instances.  
+Each instance **must** have different values for the following settings:
 - `--interface`
 - either `--cluster-port`, or `--bind-addr` or `--bind-iface`
 - `--wireguard-port`
-- `--overlay-net` (optional, but recommended to avoid node address conflicts)
 
-Finally, one should use different cluster keys for different clusters, as a security best practice.
+The following settings are not required to be unique, but recommended:
+- `--overlay-net` (to reduce the chance of node address conflicts; see [Overlay IP collisions](#overlay-ip-collisions))
+- `--cluster-key` (as a sensible security measure)
 
 ## Security considerations
 
