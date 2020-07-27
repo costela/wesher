@@ -6,6 +6,7 @@ import (
 
 	"github.com/costela/wesher/cluster"
 	"github.com/hashicorp/go-sockaddr"
+	"github.com/mikioh/ipaddr"
 	"github.com/pkg/errors"
 	"github.com/stevenroose/gonfig"
 )
@@ -77,8 +78,8 @@ func loadConfig() (*config, error) {
 		}
 	}
 
-	if config.AdvertiseAddr == "" {
-		config.AdvertiseAddr = config.BindAddr
+	if _, err := ipaddr.Parse(config.AdvertiseAddr); err != nil {
+		config.AdvertiseAddr = ""
 	}
 
 	return &config, nil
