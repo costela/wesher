@@ -16,6 +16,7 @@ type config struct {
 	Init          bool     `desc:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
 	BindAddr      string   `id:"bind-addr" desc:"IP address to bind to for cluster membership traffic (cannot be used with --bind-iface)"`
 	BindIface     string   `id:"bind-iface" desc:"Interface to bind to for cluster membership traffic (cannot be used with --bind-addr)"`
+	AdvertiseAddr string   `id:"advertise-addr" desc:"IP address to advertise to other nodes for NAT traversal"`
 	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
 	WireguardPort int      `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
 	OverlayNet    *network `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
@@ -74,6 +75,10 @@ func loadConfig() (*config, error) {
 		} else {
 			config.BindAddr = "0.0.0.0"
 		}
+	}
+
+	if config.AdvertiseAddr == "" {
+		config.AdvertiseAddr = config.BindAddr
 	}
 
 	return &config, nil

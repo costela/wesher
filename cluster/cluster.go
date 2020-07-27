@@ -30,7 +30,7 @@ type Cluster struct {
 
 // New is used to create a new Cluster instance
 // The returned instance is ready to be updated with the local node settings then joined
-func New(name string, init bool, clusterKey []byte, bindAddr string, bindPort int, useIPAsName bool) (*Cluster, error) {
+func New(name string, init bool, clusterKey []byte, bindAddr string, bindPort int, advertiseAddr string, advertisePort int, useIPAsName bool) (*Cluster, error) {
 	state := &state{}
 	if !init {
 		loadState(state, name)
@@ -46,7 +46,8 @@ func New(name string, init bool, clusterKey []byte, bindAddr string, bindPort in
 	mlConfig.SecretKey = clusterKey
 	mlConfig.BindAddr = bindAddr
 	mlConfig.BindPort = bindPort
-	mlConfig.AdvertisePort = bindPort
+	mlConfig.AdvertiseAddr = advertiseAddr
+	mlConfig.AdvertisePort = advertisePort
 	if useIPAsName && bindAddr != "0.0.0.0" {
 		mlConfig.Name = bindAddr
 	}
