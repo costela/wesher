@@ -15,7 +15,7 @@ security benefits from wireguard. See [security considerations](#security-consid
 ## Quickstart
 
 0. Before starting:
-   1. make sure the [wireguard](https://www.wireguard.com/) kernel module is installed on all nodes.
+   1. make sure the [wireguard](https://www.wireguard.com/) kernel module is available on all nodes. It is bundled with linux newer than 5.6 and can otherwise be installed following the instructions [here](https://www.wireguard.com/install/).
 
    2. The following ports must be accessible between all nodes (see [configuration options](#configuration-options) to change these):
       - 51820 UDP
