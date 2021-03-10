@@ -75,11 +75,12 @@ func main() {
 			hosts := make(map[string][]string, len(rawNodes))
 			logrus.Info("cluster members:\n")
 			for _, node := range rawNodes {
+
 				if err := node.DecodeMeta(); err != nil {
 					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
 					continue
 				}
-				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
+				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s, net: %s, routes: %s", node.Addr, node.OverlayAddr, node.PubKey, node.Routes)
 				nodes = append(nodes, node)
 				hosts[node.OverlayAddr.IP.String()] = []string{node.Name}
 			}
