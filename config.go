@@ -18,6 +18,7 @@ type config struct {
 	BindIface     string   `id:"bind-iface" desc:"Interface to bind to for cluster membership traffic (cannot be used with --bind-addr)"`
 	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
 	WireguardPort int      `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
+	MTU           int      `id:"mtu" desc:"mtu for wireguard interface" default:"1420"`
 	OverlayNet    *network `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
 	RoutedNet     *network `id:"routed-net" desc:"network used to filter routes that nodes are allowed to announce (CIDR format)" default:"0.0.0.0/32"`
 	Interface     string   `desc:"name of the wireguard interface to create and manage" default:"wgoverlay"`

@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
-	wgstate, localNode, err := wg.New(config.Interface, config.WireguardPort, (*net.IPNet)(config.OverlayNet), cluster.LocalName)
+	wgstate, localNode, err := wg.New(config.Interface, config.WireguardPort, config.MTU, (*net.IPNet)(config.OverlayNet), cluster.LocalName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}

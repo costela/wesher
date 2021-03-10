@@ -20,12 +20,13 @@ type State struct {
 	Port        int
 	PrivKey     wgtypes.Key
 	PubKey      wgtypes.Key
+	MTU         int
 }
 
 // New creates a new Wesher Wireguard state
 // The Wireguard keys are generated for every new interface
 // The interface must later be setup using SetUpInterface
-func New(iface string, port int, ipnet *net.IPNet, name string) (*State, *common.Node, error) {
+func New(iface string, port int, mtu int, ipnet *net.IPNet, name string) (*State, *common.Node, error) {
 	client, err := wgctrl.New()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not instantiate wireguard client")
@@ -43,6 +44,7 @@ func New(iface string, port int, ipnet *net.IPNet, name string) (*State, *common
 		Port:    port,
 		PrivKey: privKey,
 		PubKey:  pubKey,
+		MTU:     mtu,
 	}
 	state.assignOverlayAddr(ipnet, name)
 
@@ -121,14 +123,12 @@ func (s *State) SetUpInterface(nodes []common.Node, routedNet *net.IPNet) error 
 	}); err != nil {
 		return errors.Wrapf(err, "could not set address for %s", s.iface)
 	}
-	// TODO: make MTU configurable?
-	if err := netlink.LinkSetMTU(link, 1420); err != nil {
+	if err := netlink.LinkSetMTU(link, s.MTU); err != nil {
 		return errors.Wrapf(err, "could not set MTU for %s", s.iface)
 	}
 	if err := netlink.LinkSetUp(link); err != nil {
 		return errors.Wrapf(err, "could not enable interface %s", s.iface)
 	}
-
 
 	// first compute routes
 	currentRoutes, err := netlink.RouteList(link, netlink.FAMILY_ALL)
@@ -145,8 +145,8 @@ func (s *State) SetUpInterface(nodes []common.Node, routedNet *net.IPNet) error 
 		})
 		// via routes
 		for _, route := range node.Routes {
-			    if !routedNet.Contains(route.IP) {
-				        continue
+			if !routedNet.Contains(route.IP) {
+				continue
 			}
 			routes = append(routes, netlink.Route{
 				LinkIndex: link.Attrs().Index,
