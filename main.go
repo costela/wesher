@@ -103,7 +103,7 @@ func main() {
 					Stderr: os.Stderr,
 				}
 				if err := cmd.Run(); err != nil {
-					logrus.Errorf("error while executing node-update-script: %s", err)
+					logrus.Errorf("error while executing node-update-script %s: %s", config.NodeUpdateScript, err)
 				}
 			}
 		case routes := <-routesc:
