@@ -64,6 +64,7 @@ func main() {
 	}
 
 	// Main loop
+	routesc := common.Routes((*net.IPNet)(config.RoutedNet))
 	incomingSigs := make(chan os.Signal, 1)
 	signal.Notify(incomingSigs, syscall.SIGTERM, os.Interrupt)
 	logrus.Debug("waiting for cluster events")
@@ -82,7 +83,7 @@ func main() {
 				nodes = append(nodes, node)
 				hosts[node.OverlayAddr.IP.String()] = []string{node.Name}
 			}
-			if err := wgstate.SetUpInterface(nodes); err != nil {
+			if err := wgstate.SetUpInterface(nodes, (*net.IPNet)(config.RoutedNet)); err != nil {
 				logrus.WithError(err).Error("could not up interface")
 				wgstate.DownInterface()
 			}
@@ -91,6 +92,10 @@ func main() {
 					logrus.WithError(err).Error("could not write hosts entries")
 				}
 			}
+		case routes := <-routesc:
+			logrus.Info("announcing new routes...")
+			localNode.Routes = routes
+			cluster.Update(localNode)
 		case <-incomingSigs:
 			logrus.Info("terminating...")
 			cluster.Leave()

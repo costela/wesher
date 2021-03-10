@@ -19,6 +19,7 @@ type config struct {
 	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
 	WireguardPort int      `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
 	OverlayNet    *network `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
+	RoutedNet     *network `id:"routed-net" desc:"network used to filter routes that nodes are allowed to announce (CIDR format)" default:"0.0.0.0/32"`
 	Interface     string   `desc:"name of the wireguard interface to create and manage" default:"wgoverlay"`
 	NoEtcHosts    bool     `id:"no-etc-hosts" desc:"disable writing of entries to /etc/hosts"`
 	LogLevel      string   `id:"log-level" desc:"set the verbosity (debug/info/warn/error)" default:"warn"`
