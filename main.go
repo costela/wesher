@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -91,6 +92,18 @@ func main() {
 			if !config.NoEtcHosts {
 				if err := hostsFile.WriteEntries(hosts); err != nil {
 					logrus.WithError(err).Error("could not write hosts entries")
+				}
+			}
+			if len(config.NodeUpdateScript) > 0 {
+				updateScript, _ := exec.LookPath(config.NodeUpdateScript)
+				cmd := &exec.Cmd{
+					Path:   updateScript,
+					Args:   []string{updateScript, config.Interface},
+					Stdout: os.Stdout,
+					Stderr: os.Stderr,
+				}
+				if err := cmd.Run(); err != nil {
+					logrus.Errorf("error while executing node-update-script: %s", err)
 				}
 			}
 		case routes := <-routesc:
