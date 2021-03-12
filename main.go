@@ -64,8 +64,14 @@ func main() {
 		logrus.WithError(err).Fatal("could not join cluster")
 	}
 
+	routedNets := make([]*net.IPNet, len(config.RoutedNet))
+	for index, routedNetItem := range config.RoutedNet {
+		logrus.Debugf("adding network %s", routedNetItem)
+		routedNets[index] = (*net.IPNet)(routedNetItem)
+	}
+
 	// Main loop
-	routesc := common.Routes((*net.IPNet)(config.RoutedNet))
+	routesc := common.Routes(routedNets)
 	incomingSigs := make(chan os.Signal, 1)
 	signal.Notify(incomingSigs, syscall.SIGTERM, os.Interrupt)
 	logrus.Debug("waiting for cluster events")
@@ -85,7 +91,7 @@ func main() {
 				nodes = append(nodes, node)
 				hosts[node.OverlayAddr.IP.String()] = []string{node.Name}
 			}
-			if err := wgstate.SetUpInterface(nodes, (*net.IPNet)(config.RoutedNet)); err != nil {
+			if err := wgstate.SetUpInterface(nodes, routedNets); err != nil {
 				logrus.WithError(err).Error("could not up interface")
 				wgstate.DownInterface()
 			}

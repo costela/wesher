@@ -8,7 +8,7 @@ import (
 
 // Routes pushes list of local routes to a channel, after filtering using the provided network
 // The full list is pushed after every routing change
-func Routes(filter *net.IPNet) <-chan []net.IPNet {
+func Routes(filter []*net.IPNet) <-chan []net.IPNet {
 	routesc := make(chan []net.IPNet)
 	updatec := make(chan netlink.RouteUpdate)
 	netlink.RouteSubscribe(updatec, make(chan struct{}))
@@ -21,8 +21,10 @@ func Routes(filter *net.IPNet) <-chan []net.IPNet {
 			}
 			result := make([]net.IPNet, 0)
 			for _, route := range routes {
-				if route.Dst != nil && filter.Contains(route.Dst.IP) {
-					result = append(result, *route.Dst)
+				for _, filterItem := range filter {
+					if route.Dst != nil && filterItem.Contains(route.Dst.IP) {
+						result = append(result, *route.Dst)
+					}
 				}
 			}
 			routesc <- result

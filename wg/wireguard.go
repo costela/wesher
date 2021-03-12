@@ -1,6 +1,7 @@
 package wg
 
 import (
+	"fmt"
 	"hash/fnv"
 	"net"
 	"os"
@@ -96,12 +97,13 @@ func (s *State) DownInterface() error {
 }
 
 // SetUpInterface creates and sets up the associated network interface
-func (s *State) SetUpInterface(nodes []common.Node, routedNet *net.IPNet) error {
+func (s *State) SetUpInterface(nodes []common.Node, routedNet []*net.IPNet) error {
 	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: s.iface}}); err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "could not create interface %s", s.iface)
 	}
 
 	peerCfgs, err := s.nodesToPeerConfigs(nodes)
+	fmt.Printf("peer cfg", peerCfgs)
 	if err != nil {
 		return errors.Wrap(err, "error converting received node information to wireguard format")
 	}
@@ -145,8 +147,10 @@ func (s *State) SetUpInterface(nodes []common.Node, routedNet *net.IPNet) error 
 		})
 		// via routes
 		for _, route := range node.Routes {
-			if !routedNet.Contains(route.IP) {
-				continue
+			for _, routedNetItem := range routedNet {
+				if !routedNetItem.Contains(route.IP) {
+					continue
+				}
 			}
 			routes = append(routes, netlink.Route{
 				LinkIndex: link.Attrs().Index,
@@ -168,8 +172,10 @@ func (s *State) SetUpInterface(nodes []common.Node, routedNet *net.IPNet) error 
 	for _, route := range routes {
 		// only delete a reoute if it is a site scope route that belongs to the routed net, mainly to
 		// avoid deleting otherwise manually set routes
-		if matchRoute(currentRoutes, route) == nil && route.Scope == netlink.SCOPE_LINK && routedNet.Contains(route.Dst.IP) {
-			netlink.RouteDel(&route)
+		for _, routedNetItem := range routedNet {
+			if matchRoute(currentRoutes, route) == nil && route.Scope == netlink.SCOPE_LINK && routedNetItem.Contains(route.Dst.IP) {
+				netlink.RouteDel(&route)
+			}
 		}
 	}
 
