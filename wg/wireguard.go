@@ -1,7 +1,6 @@
 package wg
 
 import (
-	"fmt"
 	"hash/fnv"
 	"net"
 	"os"
@@ -103,7 +102,6 @@ func (s *State) SetUpInterface(nodes []common.Node, routedNet []*net.IPNet) erro
 	}
 
 	peerCfgs, err := s.nodesToPeerConfigs(nodes)
-	fmt.Printf("peer cfg", peerCfgs)
 	if err != nil {
 		return errors.Wrap(err, "error converting received node information to wireguard format")
 	}
