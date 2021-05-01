@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -39,7 +40,7 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
-	wgstate, localNode, err := wg.New(config.Interface, config.WireguardPort, (*net.IPNet)(config.OverlayNet), cluster.LocalName)
+	wgstate, localNode, err := wg.New(config.Interface, config.WireguardPort, config.MTU, (*net.IPNet)(config.OverlayNet), cluster.LocalName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
@@ -63,7 +64,14 @@ func main() {
 		logrus.WithError(err).Fatal("could not join cluster")
 	}
 
+	routedNets := make([]*net.IPNet, len(config.RoutedNet))
+	for index, routedNetItem := range config.RoutedNet {
+		logrus.Debugf("adding network %s", routedNetItem)
+		routedNets[index] = (*net.IPNet)(routedNetItem)
+	}
+
 	// Main loop
+	routesc := common.Routes(routedNets)
 	incomingSigs := make(chan os.Signal, 1)
 	signal.Notify(incomingSigs, syscall.SIGTERM, os.Interrupt)
 	logrus.Debug("waiting for cluster events")
@@ -74,15 +82,16 @@ func main() {
 			hosts := make(map[string][]string, len(rawNodes))
 			logrus.Info("cluster members:\n")
 			for _, node := range rawNodes {
+
 				if err := node.DecodeMeta(); err != nil {
 					logrus.Warnf("\t addr: %s, could not decode metadata", node.Addr)
 					continue
 				}
-				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
+				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s, net: %s, routes: %s", node.Addr, node.OverlayAddr, node.PubKey, node.Routes)
 				nodes = append(nodes, node)
 				hosts[node.OverlayAddr.IP.String()] = []string{node.Name}
 			}
-			if err := wgstate.SetUpInterface(nodes); err != nil {
+			if err := wgstate.SetUpInterface(nodes, routedNets); err != nil {
 				logrus.WithError(err).Error("could not up interface")
 				wgstate.DownInterface()
 			}
@@ -91,6 +100,22 @@ func main() {
 					logrus.WithError(err).Error("could not write hosts entries")
 				}
 			}
+			if len(config.NodeUpdateScript) > 0 {
+				updateScript, _ := exec.LookPath(config.NodeUpdateScript)
+				cmd := &exec.Cmd{
+					Path:   updateScript,
+					Args:   []string{updateScript, config.Interface},
+					Stdout: os.Stdout,
+					Stderr: os.Stderr,
+				}
+				if err := cmd.Run(); err != nil {
+					logrus.Errorf("error while executing node-update-script %s: %s", config.NodeUpdateScript, err)
+				}
+			}
+		case routes := <-routesc:
+			logrus.Info("announcing new routes...")
+			localNode.Routes = routes
+			cluster.Update(localNode)
 		case <-incomingSigs:
 			logrus.Info("terminating...")
 			cluster.Leave()

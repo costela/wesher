@@ -127,6 +127,20 @@ test_multiple_clusters_restart() {
     stop_test_container test1-orig
 }
 
+test_routed_network() {
+    run_test_container test1-orig test1 --init --routed-net 10.15.0.0/16
+    run_test_container test2-orig test2 --join test1-orig --routed-net 10.15.0.0/16
+    docker exec test2-orig bash -c "ip l a test type bridge; ip l s up test; ip a a 10.15.0.1/24 dev test"
+
+    sleep 3
+
+    docker exec test1-orig ping -c1 -W1 test2 || (docker logs test1-orig; docker logs test2-orig; false)
+    docker exec test1-orig ping -c1 -W1 10.15.0.1 || (docker logs test1-orig; docker logs test2-orig; false)
+
+    stop_test_container test2-orig
+    stop_test_container test1-orig    
+}
+
 for test_func in $(declare -F | grep -Eo '\<test_.*$'); do
     echo "--- Running $test_func:"
     $test_func
