@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/hashicorp/memberlist v0.2.2
+	github.com/hashicorp/memberlist v0.3.1
 	github.com/mattn/go-isatty v0.0.12
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
