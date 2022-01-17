@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/memberlist v0.3.1
 	github.com/mattn/go-isatty v0.0.12
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stevenroose/gonfig v0.1.5
 	github.com/stretchr/testify v1.5.1 // indirect
 	github.com/vishvananda/netlink v1.1.0
