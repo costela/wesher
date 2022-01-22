@@ -11,6 +11,7 @@ import (
 // nodeMeta holds metadata sent over the cluster
 type nodeMeta struct {
 	OverlayAddr net.IPNet
+	Routes      []net.IPNet
 	PubKey      string
 }
 

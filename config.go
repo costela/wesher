@@ -11,18 +11,22 @@ import (
 )
 
 type config struct {
-	ClusterKey    []byte   `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
-	Join          []string `desc:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
-	Init          bool     `desc:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
-	BindAddr      string   `id:"bind-addr" desc:"IP address to bind to for cluster membership traffic (cannot be used with --bind-iface)"`
-	BindIface     string   `id:"bind-iface" desc:"Interface to bind to for cluster membership traffic (cannot be used with --bind-addr)"`
-	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
-	WireguardPort int      `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
-	OverlayNet    *network `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
-	Interface     string   `desc:"name of the wireguard interface to create and manage" default:"wgoverlay"`
-	NoEtcHosts    bool     `id:"no-etc-hosts" desc:"disable writing of entries to /etc/hosts"`
-	LogLevel      string   `id:"log-level" desc:"set the verbosity (debug/info/warn/error)" default:"warn"`
-	Version       bool     `desc:"display current version and exit"`
+	ConfigFile       string     `id:"config" desc:"config file YAML" default:"wesher.conf"`
+	ClusterKey       []byte     `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
+	Join             []string   `desc:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
+	Init             bool       `desc:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
+	BindAddr         string     `id:"bind-addr" desc:"IP address to bind to for cluster membership traffic (cannot be used with --bind-iface)"`
+	BindIface        string     `id:"bind-iface" desc:"Interface to bind to for cluster membership traffic (cannot be used with --bind-addr)"`
+	ClusterPort      int        `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
+	WireguardPort    int        `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
+	MTU              int        `id:"mtu" desc:"mtu for wireguard interface" default:"1420"`
+	OverlayNet       *network   `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
+	RoutedNet        []*network `id:"routed-net" desc:"network used to filter routes that nodes are allowed to announce (CIDR format)" default:"0.0.0.0/32"`
+	Interface        string     `desc:"name of the wireguard interface to create and manage" default:"wgoverlay"`
+	NoEtcHosts       bool       `id:"no-etc-hosts" desc:"disable writing of entries to /etc/hosts"`
+	LogLevel         string     `id:"log-level" desc:"set the verbosity (debug/info/warn/error)" default:"warn"`
+	Version          bool       `desc:"display current version and exit"`
+	NodeUpdateScript string     `id:"node-update-script" desc:"path to script which is executed everytime the service receives an update for a node"`
 
 	// for easier local testing; will break etchosts entry
 	UseIPAsName bool `id:"ip-as-name" default:"false" opts:"hidden"`
@@ -30,7 +34,12 @@ type config struct {
 
 func loadConfig() (*config, error) {
 	var config config
-	err := gonfig.Load(&config, gonfig.Conf{EnvPrefix: "WESHER_"})
+	err := gonfig.Load(&config, gonfig.Conf{
+		ConfigFileVariable:  "config",
+		EnvPrefix:           "WESHER_",
+		FileDecoder:         gonfig.DecoderYAML,
+		FileDefaultFilename: "wesher.conf",
+	})
 	if err != nil {
 		return nil, err
 	}

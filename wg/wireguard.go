@@ -20,12 +20,13 @@ type State struct {
 	Port        int
 	PrivKey     wgtypes.Key
 	PubKey      wgtypes.Key
+	MTU         int
 }
 
 // New creates a new Wesher Wireguard state
 // The Wireguard keys are generated for every new interface
 // The interface must later be setup using SetUpInterface
-func New(iface string, port int, ipnet *net.IPNet, name string) (*State, *common.Node, error) {
+func New(iface string, port int, mtu int, ipnet *net.IPNet, name string) (*State, *common.Node, error) {
 	client, err := wgctrl.New()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not instantiate wireguard client")
@@ -43,6 +44,7 @@ func New(iface string, port int, ipnet *net.IPNet, name string) (*State, *common
 		Port:    port,
 		PrivKey: privKey,
 		PubKey:  pubKey,
+		MTU:     mtu,
 	}
 	state.assignOverlayAddr(ipnet, name)
 
@@ -94,7 +96,7 @@ func (s *State) DownInterface() error {
 }
 
 // SetUpInterface creates and sets up the associated network interface
-func (s *State) SetUpInterface(nodes []common.Node) error {
+func (s *State) SetUpInterface(nodes []common.Node, routedNet []*net.IPNet) error {
 	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: s.iface}}); err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "could not create interface %s", s.iface)
 	}
@@ -121,19 +123,58 @@ func (s *State) SetUpInterface(nodes []common.Node) error {
 	}); err != nil {
 		return errors.Wrapf(err, "could not set address for %s", s.iface)
 	}
-	// TODO: make MTU configurable?
-	if err := netlink.LinkSetMTU(link, 1420); err != nil {
+	if err := netlink.LinkSetMTU(link, s.MTU); err != nil {
 		return errors.Wrapf(err, "could not set MTU for %s", s.iface)
 	}
 	if err := netlink.LinkSetUp(link); err != nil {
 		return errors.Wrapf(err, "could not enable interface %s", s.iface)
 	}
-	for _, node := range nodes {
-		netlink.RouteAdd(&netlink.Route{
+
+	// first compute routes
+	currentRoutes, err := netlink.RouteList(link, netlink.FAMILY_ALL)
+	if err != nil {
+		return errors.Wrapf(err, "could not update the routing table for %s", s.iface)
+	}
+	routes := make([]netlink.Route, 0)
+	for index, node := range nodes {
+		// dev route
+		routes = append(routes, netlink.Route{
 			LinkIndex: link.Attrs().Index,
-			Dst:       &node.OverlayAddr,
+			Dst:       &nodes[index].OverlayAddr,
 			Scope:     netlink.SCOPE_LINK,
 		})
+		// via routes
+		for _, route := range node.Routes {
+			for _, routedNetItem := range routedNet {
+				if !routedNetItem.Contains(route.IP) {
+					continue
+				}
+			}
+			routes = append(routes, netlink.Route{
+				LinkIndex: link.Attrs().Index,
+				Dst:       &route,
+				Gw:        node.OverlayAddr.IP,
+				Scope:     netlink.SCOPE_SITE,
+			})
+		}
+	}
+	// then actually update the routing table
+	for _, route := range routes {
+		match := matchRoute(currentRoutes, route)
+		if match == nil {
+			netlink.RouteAdd(&route)
+		} else if match.Gw.String() != route.Gw.String() {
+			netlink.RouteReplace(&route)
+		}
+	}
+	for _, route := range routes {
+		// only delete a reoute if it is a site scope route that belongs to the routed net, mainly to
+		// avoid deleting otherwise manually set routes
+		for _, routedNetItem := range routedNet {
+			if matchRoute(currentRoutes, route) == nil && route.Scope == netlink.SCOPE_LINK && routedNetItem.Contains(route.Dst.IP) {
+				netlink.RouteDel(&route)
+			}
+		}
 	}
 
 	return nil
@@ -153,10 +194,20 @@ func (s *State) nodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig, e
 				IP:   node.Addr,
 				Port: s.Port,
 			},
-			AllowedIPs: []net.IPNet{
-				node.OverlayAddr,
-			},
+			AllowedIPs: append([]net.IPNet{node.OverlayAddr}, node.Routes...),
 		}
 	}
 	return peerCfgs, nil
+}
+
+func matchRoute(set []netlink.Route, needle netlink.Route) *netlink.Route {
+	// routes are considered equal if they overlap and have the same prefix length
+	prefixn, _ := needle.Dst.Mask.Size()
+	for _, route := range set {
+		prefixr, _ := route.Dst.Mask.Size()
+		if prefixn == prefixr && route.Dst.Contains(needle.Dst.IP) {
+			return &route
+		}
+	}
+	return nil
 }
