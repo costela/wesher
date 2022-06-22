@@ -10,7 +10,6 @@ import (
 	"github.com/costela/wesher/common"
 	"github.com/hashicorp/memberlist"
 	"github.com/mattn/go-isatty"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -89,7 +88,7 @@ func (c *Cluster) Join(addrs []string) error {
 	if _, err := c.ml.Join(addrs); err != nil {
 		return err
 	} else if len(addrs) > 0 && c.ml.NumMembers() < 2 {
-		return errors.New("could not join to any of the provided addresses")
+		return fmt.Errorf("could not join to any of the provided addresses")
 	}
 	return nil
 }

@@ -1,39 +1,40 @@
 package wg
 
 import (
+	"fmt"
 	"hash/fnv"
 	"net"
+	"net/netip"
 	"os"
 
 	"github.com/costela/wesher/common"
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// State holds the configured state of a Wesher Wireguard interface
+// State holds the configured state of a Wesher Wireguard interface.
 type State struct {
 	iface       string
 	client      *wgctrl.Client
-	OverlayAddr net.IPNet
+	OverlayAddr netip.Addr
 	Port        int
 	PrivKey     wgtypes.Key
 	PubKey      wgtypes.Key
 }
 
-// New creates a new Wesher Wireguard state
-// The Wireguard keys are generated for every new interface
-// The interface must later be setup using SetUpInterface
-func New(iface string, port int, ipnet *net.IPNet, name string) (*State, *common.Node, error) {
+// New creates a new Wesher Wireguard state.
+// The Wireguard keys are generated for every new interface.
+// The interface must later be setup using SetUpInterface.
+func New(iface string, port int, prefix netip.Prefix, name string) (*State, *common.Node, error) {
 	client, err := wgctrl.New()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "could not instantiate wireguard client")
+		return nil, nil, fmt.Errorf("instantiating wireguard client: %w", err)
 	}
 
 	privKey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("generating private key: %w", err)
 	}
 	pubKey := privKey.PublicKey()
 
@@ -44,7 +45,9 @@ func New(iface string, port int, ipnet *net.IPNet, name string) (*State, *common
 		PrivKey: privKey,
 		PubKey:  pubKey,
 	}
-	state.assignOverlayAddr(ipnet, name)
+	if err := state.assignOverlayAddr(prefix, name); err != nil {
+		return nil, nil, fmt.Errorf("assigning overlay address: %w", err)
+	}
 
 	node := &common.Node{}
 	node.OverlayAddr = state.OverlayAddr
@@ -53,55 +56,56 @@ func New(iface string, port int, ipnet *net.IPNet, name string) (*State, *common
 	return &state, node, nil
 }
 
-// assignOverlayAddr assigns a new address to the interface
+// assignOverlayAddr assigns a new address to the interface.
 // The address is assigned inside the provided network and depends on the
-// provided name deterministically
+// provided name deterministically.
 // Currently, the address is assigned by hashing the name and mapping that
-// hash in the target network space
-func (s *State) assignOverlayAddr(ipnet *net.IPNet, name string) {
-	// TODO: this is way too brittle and opaque
-	bits, size := ipnet.Mask.Size()
-	ip := make([]byte, len(ipnet.IP))
-	copy(ip, []byte(ipnet.IP))
+// hash in the target network space.
+func (s *State) assignOverlayAddr(prefix netip.Prefix, name string) error {
+	ip := prefix.Addr().AsSlice()
 
 	h := fnv.New128a()
 	h.Write([]byte(name))
 	hb := h.Sum(nil)
 
-	for i := 1; i <= (size-bits)/8; i++ {
+	for i := 1; i <= (prefix.Addr().BitLen()-prefix.Bits())/8; i++ {
 		ip[len(ip)-i] = hb[len(hb)-i]
 	}
 
-	s.OverlayAddr = net.IPNet{
-		IP:   net.IP(ip),
-		Mask: net.CIDRMask(size, size), // either /32 or /128, depending if ipv4 or ipv6
+	addr, ok := netip.AddrFromSlice(ip)
+	if !ok {
+		return fmt.Errorf("could not create IP from %q", ip)
 	}
+
+	s.OverlayAddr = addr
+
+	return nil
 }
 
-// DownInterface shuts down the associated network interface
+// DownInterface shuts down the associated network interface.
 func (s *State) DownInterface() error {
 	if _, err := s.client.Device(s.iface); err != nil {
 		if os.IsNotExist(err) {
 			return nil // device already gone; noop
 		}
-		return err
+		return fmt.Errorf("getting device %s: %w", s.iface, err)
 	}
 	link, err := netlink.LinkByName(s.iface)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting link for %s: %w", s.iface, err)
 	}
 	return netlink.LinkDel(link)
 }
 
-// SetUpInterface creates and sets up the associated network interface
+// SetUpInterface creates and sets up the associated network interface.
 func (s *State) SetUpInterface(nodes []common.Node) error {
 	if err := netlink.LinkAdd(&wireguard{LinkAttrs: netlink.LinkAttrs{Name: s.iface}}); err != nil && !os.IsExist(err) {
-		return errors.Wrapf(err, "could not create interface %s", s.iface)
+		return fmt.Errorf("creating link %s: %w", s.iface, err)
 	}
 
 	peerCfgs, err := s.nodesToPeerConfigs(nodes)
 	if err != nil {
-		return errors.Wrap(err, "error converting received node information to wireguard format")
+		return fmt.Errorf("converting received node information to wireguard format: %w", err)
 	}
 	if err := s.client.ConfigureDevice(s.iface, wgtypes.Config{
 		PrivateKey:   &s.PrivKey,
@@ -109,34 +113,41 @@ func (s *State) SetUpInterface(nodes []common.Node) error {
 		ReplacePeers: true,
 		Peers:        peerCfgs,
 	}); err != nil {
-		return errors.Wrapf(err, "could not set wireguard configuration for %s", s.iface)
+		return fmt.Errorf("setting wireguard configuration for %s: %w", s.iface, err)
 	}
 
 	link, err := netlink.LinkByName(s.iface)
 	if err != nil {
-		return errors.Wrapf(err, "could not get link information for %s", s.iface)
+		return fmt.Errorf("getting link information for %s: %w", s.iface, err)
 	}
 	if err := netlink.AddrReplace(link, &netlink.Addr{
-		IPNet: &s.OverlayAddr,
+		IPNet: addrToIPNet(s.OverlayAddr),
 	}); err != nil {
-		return errors.Wrapf(err, "could not set address for %s", s.iface)
+		return fmt.Errorf("setting address for %s: %w", s.iface, err)
 	}
 	// TODO: make MTU configurable?
 	if err := netlink.LinkSetMTU(link, 1420); err != nil {
-		return errors.Wrapf(err, "could not set MTU for %s", s.iface)
+		return fmt.Errorf("setting MTU for %s: %w", s.iface, err)
 	}
 	if err := netlink.LinkSetUp(link); err != nil {
-		return errors.Wrapf(err, "could not enable interface %s", s.iface)
+		return fmt.Errorf("enabling interface %s: %w", s.iface, err)
 	}
 	for _, node := range nodes {
 		netlink.RouteAdd(&netlink.Route{
 			LinkIndex: link.Attrs().Index,
-			Dst:       &node.OverlayAddr,
+			Dst:       addrToIPNet(node.OverlayAddr),
 			Scope:     netlink.SCOPE_LINK,
 		})
 	}
 
 	return nil
+}
+
+func addrToIPNet(addr netip.Addr) *net.IPNet {
+	return &net.IPNet{
+		IP:   addr.AsSlice(),
+		Mask: net.CIDRMask(addr.BitLen(), 0),
+	}
 }
 
 func (s *State) nodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig, error) {
@@ -154,7 +165,7 @@ func (s *State) nodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig, e
 				Port: s.Port,
 			},
 			AllowedIPs: []net.IPNet{
-				node.OverlayAddr,
+				*addrToIPNet(node.OverlayAddr),
 			},
 		}
 	}

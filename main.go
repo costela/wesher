@@ -2,7 +2,6 @@ package main // import "github.com/costela/wesher"
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -39,7 +38,7 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
-	wgstate, localNode, err := wg.New(config.Interface, config.WireguardPort, (*net.IPNet)(config.OverlayNet), cluster.LocalName)
+	wgstate, localNode, err := wg.New(config.Interface, config.WireguardPort, config.OverlayNet, cluster.LocalName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not instantiate wireguard controller")
 	}
@@ -80,7 +79,7 @@ func main() {
 				}
 				logrus.Infof("\taddr: %s, overlay: %s, pubkey: %s", node.Addr, node.OverlayAddr, node.PubKey)
 				nodes = append(nodes, node)
-				hosts[node.OverlayAddr.IP.String()] = []string{node.Name}
+				hosts[node.OverlayAddr.String()] = []string{node.Name}
 			}
 			if err := wgstate.SetUpInterface(nodes); err != nil {
 				logrus.WithError(err).Error("could not up interface")

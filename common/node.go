@@ -3,14 +3,14 @@ package common
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
+	"net/netip"
 )
 
 // nodeMeta holds metadata sent over the cluster
 type nodeMeta struct {
-	OverlayAddr net.IPNet
+	OverlayAddr netip.Addr
 	PubKey      string
 }
 
@@ -30,10 +30,10 @@ func (n *Node) String() string {
 func (n *Node) EncodeMeta(limit int) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	if err := gob.NewEncoder(buf).Encode(n.nodeMeta); err != nil {
-		return nil, errors.Wrap(err, "could not encode local state")
+		return nil, fmt.Errorf("encoding local state: %w", err)
 	}
 	if buf.Len() > limit {
-		return nil, errors.Errorf("could not fit node metadata into %d bytes", limit)
+		return nil, fmt.Errorf("could not fit node metadata into %d bytes", limit)
 	}
 	return buf.Bytes(), nil
 }
@@ -44,7 +44,7 @@ func (n *Node) DecodeMeta() error {
 	// PSK can cause.
 	nm := nodeMeta{}
 	if err := gob.NewDecoder(bytes.NewReader(n.Meta)).Decode(&nm); err != nil {
-		return errors.Wrap(err, "could not decode node meta")
+		return fmt.Errorf("decoding node meta: %w", err)
 	}
 	n.nodeMeta = nm
 	return nil

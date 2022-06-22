@@ -9,7 +9,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -41,16 +40,17 @@ func (eh *EtcHosts) WriteEntries(ipsToNames map[string][]string) error {
 	}
 
 	// We do not want to create the hosts file; if it's not there, we probably have the wrong path.
-	etcHosts, err := os.OpenFile(hostsPath, os.O_RDWR, 0644)
+	etcHosts, err := os.OpenFile(hostsPath, os.O_RDWR, 0o644)
 	if err != nil {
-		return errors.Wrapf(err, "could not open %s for reading", hostsPath)
+		return fmt.Errorf("could not open %s for reading: %w", hostsPath, err)
 	}
 	defer etcHosts.Close()
 
-	// create tmpfile in same folder as
+	// create tmpfile in same folder as the hosts file
+	// TODO: replace with github.com/google/renameio
 	tmp, err := ioutil.TempFile(path.Dir(hostsPath), "etchosts")
 	if err != nil {
-		return errors.Wrap(err, "could not create tempfile")
+		return fmt.Errorf("could not create tempfile: %w", err)
 	}
 
 	// remove tempfile; this might fail if we managed to move it, which is ok
@@ -99,7 +99,7 @@ func (eh *EtcHosts) writeEntries(orig io.Reader, dest io.Writer, ipsToNames map[
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return errors.Wrap(err, "error reading hosts file")
+		return fmt.Errorf("error reading hosts file: %w", err)
 	}
 
 	// append remaining entries to file
@@ -118,7 +118,7 @@ func (eh *EtcHosts) writeEntryWithBanner(tmp io.Writer, banner, ip string, names
 			eh.Logger.Printf("writing entry for %s (%s)", ip, names)
 		}
 		if _, err := fmt.Fprintf(tmp, "%s\t%s\t%s\n", ip, strings.Join(names, " "), banner); err != nil {
-			return errors.Wrapf(err, "error writing entry for %s", ip)
+			return fmt.Errorf("error writing entry for %s: %w", ip, err)
 		}
 	}
 	return nil
@@ -126,12 +126,12 @@ func (eh *EtcHosts) writeEntryWithBanner(tmp io.Writer, banner, ip string, names
 
 func (eh *EtcHosts) movePreservePerms(src, dst *os.File) error {
 	if err := src.Sync(); err != nil {
-		return errors.Wrapf(err, "could not sync changes to %s", src.Name())
+		return fmt.Errorf("could not sync changes to %s: %w", src.Name(), err)
 	}
 
 	etcHostsInfo, err := dst.Stat()
 	if err != nil {
-		return errors.Wrapf(err, "could not stat %s", dst.Name())
+		return fmt.Errorf("could not stat %s: %w", dst.Name(), err)
 	}
 
 	if err = os.Rename(src.Name(), dst.Name()); err != nil {
@@ -153,7 +153,7 @@ func (eh *EtcHosts) movePreservePerms(src, dst *os.File) error {
 	// ensure we're not running with some umask that might break things
 
 	if err := src.Chmod(etcHostsInfo.Mode()); err != nil {
-		return errors.Wrapf(err, "could not chmod %s", src.Name())
+		return fmt.Errorf("could not chmod %s: %w", src.Name(), err)
 	}
 	// TODO: also keep user?
 

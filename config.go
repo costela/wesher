@@ -3,26 +3,26 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/netip"
 
 	"github.com/costela/wesher/cluster"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/pkg/errors"
 	"github.com/stevenroose/gonfig"
 )
 
 type config struct {
-	ClusterKey    []byte   `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
-	Join          []string `desc:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
-	Init          bool     `desc:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
-	BindAddr      string   `id:"bind-addr" desc:"IP address to bind to for cluster membership traffic (cannot be used with --bind-iface)"`
-	BindIface     string   `id:"bind-iface" desc:"Interface to bind to for cluster membership traffic (cannot be used with --bind-addr)"`
-	ClusterPort   int      `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
-	WireguardPort int      `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
-	OverlayNet    *network `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
-	Interface     string   `desc:"name of the wireguard interface to create and manage" default:"wgoverlay"`
-	NoEtcHosts    bool     `id:"no-etc-hosts" desc:"disable writing of entries to /etc/hosts"`
-	LogLevel      string   `id:"log-level" desc:"set the verbosity (debug/info/warn/error)" default:"warn"`
-	Version       bool     `desc:"display current version and exit"`
+	ClusterKey    []byte       `id:"cluster-key" desc:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
+	Join          []string     `desc:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
+	Init          bool         `desc:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
+	BindAddr      string       `id:"bind-addr" desc:"IP address to bind to for cluster membership traffic (cannot be used with --bind-iface)"`
+	BindIface     string       `id:"bind-iface" desc:"Interface to bind to for cluster membership traffic (cannot be used with --bind-addr)"`
+	ClusterPort   int          `id:"cluster-port" desc:"port used for membership gossip traffic (both TCP and UDP); must be the same across cluster" default:"7946"`
+	WireguardPort int          `id:"wireguard-port" desc:"port used for wireguard traffic (UDP); must be the same across cluster" default:"51820"`
+	OverlayNet    netip.Prefix `id:"overlay-net" desc:"the network in which to allocate addresses for the overlay mesh network (CIDR format); smaller networks increase the chance of IP collision" default:"10.0.0.0/8"`
+	Interface     string       `desc:"name of the wireguard interface to create and manage" default:"wgoverlay"`
+	NoEtcHosts    bool         `id:"no-etc-hosts" desc:"disable writing of entries to /etc/hosts"`
+	LogLevel      string       `id:"log-level" desc:"set the verbosity (debug/info/warn/error)" default:"warn"`
+	Version       bool         `desc:"display current version and exit"`
 
 	// for easier local testing; will break etchosts entry
 	UseIPAsName bool `id:"ip-as-name" default:"false" opts:"hidden"`
@@ -40,22 +40,21 @@ func loadConfig() (*config, error) {
 		return nil, fmt.Errorf("unsupported cluster key length; expected %d, got %d", cluster.KeyLen, len(config.ClusterKey))
 	}
 
-	if bits, _ := ((*net.IPNet)(config.OverlayNet)).Mask.Size(); bits%8 != 0 {
-		return nil, fmt.Errorf("unsupported overlay network size; net mask must be multiple of 8, got %d", bits)
+	if config.OverlayNet.Bits()%8 != 0 {
+		return nil, fmt.Errorf("unsupported overlay network size; net mask must be multiple of 8, got %d", config.OverlayNet.Bits())
 	}
 
 	if config.BindAddr != "" && config.BindIface != "" {
 		return nil, fmt.Errorf("setting both bind address and bind interface is not supported")
-
 	} else if config.BindIface != "" {
 		// Compute the actual bind address based on the provided interface
 		iface, err := net.InterfaceByName(config.BindIface)
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not get interface by name %s", config.BindIface)
+			return nil, fmt.Errorf("getting interface by name %s: %w", config.BindIface, err)
 		}
 		addrs, err := iface.Addrs()
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not get addresses for interface %s", config.BindIface)
+			return nil, fmt.Errorf("getting addresses for interface %s: %w", config.BindIface, err)
 		}
 		if len(addrs) > 0 {
 			if addr, ok := addrs[0].(*net.IPNet); ok {
@@ -77,16 +76,4 @@ func loadConfig() (*config, error) {
 	}
 
 	return &config, nil
-}
-
-type network net.IPNet
-
-// UnmarshalText parses the provided byte array into the network receiver
-func (n *network) UnmarshalText(data []byte) error {
-	_, ipnet, err := net.ParseCIDR(string(data))
-	if err != nil {
-		return err
-	}
-	*n = network(*ipnet)
-	return nil
 }
