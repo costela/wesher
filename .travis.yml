@@ -3,8 +3,6 @@ language: go
 dist: bionic
 
 go:
-  - "1.16"
-  - "1.17"
   - "1.18"
   - "master"
 
