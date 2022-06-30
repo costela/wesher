@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-wesher
-wesher-*
+/wesher
+/wesher-*
 
 # Test binary, build with `go test -c`
 *.test

@@ -1,13 +1,11 @@
-FROM golang:1.18
+FROM docker.io/golang:1.18
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update \
- && apt install -y git make gcc \
+ && apt install -y git make gcc iputils-ping \
  && rm -rf /var/lib/apt/lists/*
-RUN go get -d golang.zx2c4.com/wireguard \
- && cd /go/src/golang.zx2c4.com/wireguard \
- && make install
+RUN go install golang.zx2c4.com/wireguard@0.0.20220316
 
 COPY entrypoint.sh /
 

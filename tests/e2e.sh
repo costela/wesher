@@ -22,7 +22,7 @@ run_test_container() {
     shift
     local hostname=$1
     shift
-    docker run -d --cap-add=NET_ADMIN --name ${name} --hostname ${hostname} -v $(pwd):/app --network=wesher_test costela/wesher-test "$@"
+    docker run -d --cap-add=NET_ADMIN --name ${name} --hostname ${hostname} -v $(pwd):/app --network=wesher_test docker.io/costela/wesher-test "$@"
     started_containers[$name]=$name
 }
 

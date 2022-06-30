@@ -17,5 +17,5 @@ if [ ! -e /dev/net/tun ]; then
     mknod /dev/net/tun c 10 200
 fi
 
-wireguard-go ${iface:-wgoverlay}
+wireguard ${iface:-wgoverlay}
 /app/wesher --log-level debug --cluster-key 'ILICZ3yBMCGAWNIq5Pn0bewBVimW3Q2yRVJ/Be+b1Uc=' "${args[@]}"
