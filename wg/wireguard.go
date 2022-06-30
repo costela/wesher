@@ -1,6 +1,7 @@
 package wg
 
 import (
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"net"
@@ -140,7 +141,7 @@ func (s *State) SetUpInterface(nodes []common.Node) error {
 			LinkIndex: link.Attrs().Index,
 			Dst:       addrToIPNet(node.OverlayAddr),
 			Scope:     netlink.SCOPE_LINK,
-		}); err != nil {
+		}); err != nil && !errors.Is(err, os.ErrExist) {
 			return fmt.Errorf("adding route %s to %s: %w", node.OverlayAddr, s.iface, err)
 		}
 	}
