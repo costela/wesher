@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func TestEtcHosts_writeEntryWithBanner(t *testing.T) {
@@ -48,7 +48,7 @@ func TestEtcHosts_writeEntries(t *testing.T) {
 	type fields struct {
 		Banner string
 		Path   string
-		Logger log.StdLogger
+		Logger logrus.StdLogger
 	}
 	type args struct {
 		orig       io.Reader
@@ -115,6 +115,3 @@ func TestEtcHosts_writeEntries(t *testing.T) {
 		})
 	}
 }
-
-// 1.2.3.4 foo bar # ! MANAGED AUTOMATICALLY !
-// 1.2.3.4 foo bar # ! MANAGED AUTOMATICALLY !

@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // DefaultBanner is the default magic comment used to identify entries managed by etchosts
@@ -27,7 +27,7 @@ type EtcHosts struct {
 	// Path is the path to the /etc/hosts file; if not set, will use DefaultPath.
 	Path string
 	// Logger is an optional logrus.StdLogger interface, used for debugging.
-	Logger log.StdLogger
+	Logger logrus.StdLogger
 }
 
 // WriteEntries is used to write the hosts entries to EtcHosts.Path
@@ -135,7 +135,7 @@ func (eh *EtcHosts) movePreservePerms(src, dst *os.File) error {
 	}
 
 	if err = os.Rename(src.Name(), dst.Name()); err != nil {
-		log.Infof("could not rename to %s; falling back to copy (%s)", dst.Name(), err)
+		eh.Logger.Printf("could not rename to %s; falling back to copy (%s)", dst.Name(), err)
 
 		if _, err := src.Seek(0, io.SeekStart); err != nil {
 			return err

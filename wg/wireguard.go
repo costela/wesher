@@ -136,11 +136,13 @@ func (s *State) SetUpInterface(nodes []common.Node) error {
 		return fmt.Errorf("enabling interface %s: %w", s.iface, err)
 	}
 	for _, node := range nodes {
-		netlink.RouteAdd(&netlink.Route{
+		if err := netlink.RouteAdd(&netlink.Route{
 			LinkIndex: link.Attrs().Index,
 			Dst:       addrToIPNet(node.OverlayAddr),
 			Scope:     netlink.SCOPE_LINK,
-		})
+		}); err != nil {
+			return fmt.Errorf("adding route %s to %s: %w", node.OverlayAddr, s.iface, err)
+		}
 	}
 
 	return nil

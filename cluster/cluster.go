@@ -95,9 +95,9 @@ func (c *Cluster) Join(addrs []string) error {
 
 // Leave saves the current state before leaving, then leaves the cluster
 func (c *Cluster) Leave() {
-	c.state.save(c.name)
+	c.state.save(c.name) // nolint: errcheck // opportunistic
 	c.ml.Leave(10 * time.Second)
-	c.ml.Shutdown() //nolint: errcheck
+	c.ml.Shutdown() // nolint: errcheck
 }
 
 // Update gossips the local node configuration, propagating any change

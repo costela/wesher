@@ -69,7 +69,7 @@ func Test_State_AssignOverlayAddr_consistent(t *testing.T) {
 	require.NoError(t, err)
 
 	s2 := &State{}
-	s2.assignOverlayAddr(prefix, "test")
+	err = s2.assignOverlayAddr(prefix, "test")
 	require.NoError(t, err)
 
 	assert.Equal(t, s1.OverlayAddr.String(), s2.OverlayAddr.String())
