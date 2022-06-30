@@ -1,7 +1,7 @@
 name: main
 on: [push, pull_request]
 jobs:
-  build:
+  test:
     strategy:
       matrix:
         go: [ '1.18.x' ]
@@ -22,8 +22,25 @@ jobs:
 
       - run: make release GOARCHES="amd64 arm arm64 mips mipsle mips64 mips64le"
 
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: |
+            wesher-*
+            wesher.sha256sums
+    
+  release:
+    name: release
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'costela/wesher'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: binaries
+
       - uses: softprops/action-gh-release@v0.1.14
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           fail_on_unmatched_files: true
           files: |
