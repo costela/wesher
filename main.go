@@ -14,7 +14,7 @@ type cli struct {
 	LogLevel LogLevelFlag `env:"WESHER_LOG_LEVEL" help:"set the verbosity (debug/info/warn/error)" default:"warn"`
 	Version  VersionFlag  `help:"display current version and exit"`
 
-	Agent AgentCmd `cmd:"" default:"" help:"start the wesher agent (default when no command specified)"`
+	Agent AgentCmd `cmd:"" default:"withargs" help:"start the wesher agent (default when no command specified)"`
 }
 
 func main() {
