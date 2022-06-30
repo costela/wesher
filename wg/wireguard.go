@@ -149,7 +149,7 @@ func (s *State) SetUpInterface(nodes []common.Node) error {
 func addrToIPNet(addr netip.Addr) *net.IPNet {
 	return &net.IPNet{
 		IP:   addr.AsSlice(),
-		Mask: net.CIDRMask(addr.BitLen(), 0),
+		Mask: net.CIDRMask(addr.BitLen(), addr.BitLen()),
 	}
 }
 
