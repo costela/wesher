@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/costela/wesher/common"
+	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -76,6 +77,8 @@ func (s *State) assignOverlayAddr(prefix netip.Prefix, name string) error {
 	if !ok {
 		return fmt.Errorf("could not create IP from %q", ip)
 	}
+
+	logrus.Debugf("assigned overlay address: %s", addr)
 
 	s.OverlayAddr = addr
 

@@ -19,7 +19,7 @@ import (
 )
 
 type AgentCmd struct {
-	ClusterKey    []byte       `env:"WESHER_CLUSTER_KEY" help:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
+	ClusterKey    key          `env:"WESHER_CLUSTER_KEY" help:"shared key for cluster membership; must be 32 bytes base64 encoded; will be generated if not provided"`
 	Join          []string     `env:"WESHER_JOIN" help:"comma separated list of hostnames or IP addresses to existing cluster members; if not provided, will attempt resuming any known state or otherwise wait for further members."`
 	Init          bool         `env:"WESHER_INIT" help:"whether to explicitly (re)initialize the cluster; any known state from previous runs will be forgotten"`
 	BindAddr      string       `env:"WESHER_BIND_ADDR" help:"IP address to bind to for cluster membership traffic (cannot be used with --bind-iface)"`
@@ -35,8 +35,8 @@ type AgentCmd struct {
 }
 
 func (a *AgentCmd) Validate() error {
-	if len(a.ClusterKey) != 0 && len(a.ClusterKey) != cluster.KeyLen {
-		return fmt.Errorf("unsupported cluster key length; expected %d, got %d", cluster.KeyLen, len(a.ClusterKey))
+	if len(a.ClusterKey.bytes) != 0 && len(a.ClusterKey.bytes) != cluster.KeyLen {
+		return fmt.Errorf("unsupported cluster key length; expected %d, got %d", cluster.KeyLen, len(a.ClusterKey.bytes))
 	}
 
 	if a.OverlayNet.Bits()%8 != 0 {
@@ -79,7 +79,7 @@ func (a *AgentCmd) Validate() error {
 
 func (a *AgentCmd) Run(cli *cli) error {
 	// Create the wireguard and cluster configuration
-	cluster, err := cluster.New(a.Interface, a.Init, a.ClusterKey, a.BindAddr, a.ClusterPort, a.UseIPAsName)
+	cluster, err := cluster.New(a.Interface, a.Init, a.ClusterKey.bytes, a.BindAddr, a.ClusterPort, a.UseIPAsName)
 	if err != nil {
 		logrus.WithError(err).Fatal("could not create cluster")
 	}
