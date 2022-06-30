@@ -1,5 +1,4 @@
-# stick to non-alpine so we can reuse build from travis host (avoid libc compat issues)
-FROM golang:1.14
+FROM golang:1.18
 
 ARG DEBIAN_FRONTEND=noninteractive
 
