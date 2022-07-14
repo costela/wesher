@@ -161,7 +161,7 @@ func (s *State) nodesToPeerConfigs(nodes []common.Node) ([]wgtypes.PeerConfig, e
 	for i, node := range nodes {
 		pubKey, err := wgtypes.ParseKey(node.PubKey)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parsing wireguard key: %w", err)
 		}
 		peerCfgs[i] = wgtypes.PeerConfig{
 			PublicKey:         pubKey,

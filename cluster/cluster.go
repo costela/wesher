@@ -37,7 +37,7 @@ func New(name string, init bool, clusterKey []byte, bindAddr string, bindPort in
 
 	clusterKey, err := computeClusterKey(state, clusterKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("computing cluster key: %w", err)
 	}
 
 	mlConfig := memberlist.DefaultWANConfig()
@@ -52,7 +52,7 @@ func New(name string, init bool, clusterKey []byte, bindAddr string, bindPort in
 
 	ml, err := memberlist.Create(mlConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating memberlist: %w", err)
 	}
 
 	cluster := Cluster{
@@ -86,7 +86,7 @@ func (c *Cluster) Join(addrs []string) error {
 	}
 
 	if _, err := c.ml.Join(addrs); err != nil {
-		return err
+		return fmt.Errorf("joining cluster: %w", err)
 	} else if len(addrs) > 0 && c.ml.NumMembers() < 2 {
 		return fmt.Errorf("could not join to any of the provided addresses")
 	}
@@ -145,7 +145,7 @@ func (c *Cluster) Members() <-chan []common.Node {
 			}
 			c.state.Nodes = nodes
 			changes <- nodes
-			c.state.save(c.name)
+			c.state.save(c.name) // nolint: errcheck // opportunistic
 		}
 	}()
 	return changes
@@ -159,7 +159,7 @@ func computeClusterKey(state *state, clusterKey []byte) ([]byte, error) {
 		clusterKey = make([]byte, KeyLen)
 		_, err := rand.Read(clusterKey)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reading random source: %w", err)
 		}
 		// TODO: refactor this into subcommand ("showkey"?)
 		if isatty.IsTerminal(os.Stdout.Fd()) {
