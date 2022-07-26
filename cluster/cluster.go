@@ -65,6 +65,7 @@ func New(name string, init bool, clusterKey []byte, bindAddr string, bindPort in
 		events: make(chan memberlist.NodeEvent, 100),
 		state:  state,
 	}
+
 	return &cluster, nil
 }
 
@@ -90,6 +91,7 @@ func (c *Cluster) Join(addrs []string) error {
 	} else if len(addrs) > 0 && c.ml.NumMembers() < 2 {
 		return fmt.Errorf("could not join to any of the provided addresses")
 	}
+
 	return nil
 }
 
@@ -108,7 +110,7 @@ func (c *Cluster) Update(localNode *common.Node) {
 	c.mlConfig.Conflict = delegate
 	c.mlConfig.Delegate = delegate
 	c.mlConfig.Events = &memberlist.ChannelEventDelegate{Ch: c.events}
-	c.ml.UpdateNode(1 * time.Second) // we currently do not update after creation
+	c.ml.UpdateNode(1 * time.Second) // nolint: errcheck // we currently do not update after creation
 }
 
 // Members provides a channel notifying of cluster changes
@@ -116,9 +118,9 @@ func (c *Cluster) Update(localNode *common.Node) {
 // the updated list of cluster nodes is pushed to the channel.
 func (c *Cluster) Members() <-chan []common.Node {
 	changes := make(chan []common.Node)
+
 	go func() {
-		for {
-			event := <-c.events
+		for event := range c.events {
 			if event.Node.Name == c.LocalName {
 				// ignore events about ourselves
 				continue
@@ -132,7 +134,7 @@ func (c *Cluster) Members() <-chan []common.Node {
 				logrus.Infof("node %s left", event.Node)
 			}
 
-			nodes := make([]common.Node, 0)
+			nodes := make([]common.Node, 0, c.ml.NumMembers())
 			for _, n := range c.ml.Members() {
 				if n.Name == c.LocalName {
 					continue
@@ -148,6 +150,7 @@ func (c *Cluster) Members() <-chan []common.Node {
 			c.state.save(c.name) // nolint: errcheck // opportunistic
 		}
 	}()
+
 	return changes
 }
 
@@ -155,17 +158,21 @@ func computeClusterKey(state *state, clusterKey []byte) ([]byte, error) {
 	if len(clusterKey) == 0 {
 		clusterKey = state.ClusterKey
 	}
+
 	if len(clusterKey) == 0 {
 		clusterKey = make([]byte, KeyLen)
-		_, err := rand.Read(clusterKey)
-		if err != nil {
+
+		if _, err := rand.Read(clusterKey); err != nil {
 			return nil, fmt.Errorf("reading random source: %w", err)
 		}
+
 		// TODO: refactor this into subcommand ("showkey"?)
 		if isatty.IsTerminal(os.Stdout.Fd()) {
 			fmt.Printf("new cluster key generated: %s\n", base64.StdEncoding.EncodeToString(clusterKey))
 		}
 	}
+
 	state.ClusterKey = clusterKey
+
 	return clusterKey, nil
 }

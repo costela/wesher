@@ -26,7 +26,7 @@ func (n *Node) String() string {
 	return n.Addr.String()
 }
 
-// EncodeMeta the node metadata to bytes, in a deterministic reversible way
+// EncodeMeta encodes the node metadata to bytes, in a deterministic reversible way.
 func (n *Node) EncodeMeta(limit int) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	if err := gob.NewEncoder(buf).Encode(n.nodeMeta); err != nil {
@@ -38,7 +38,7 @@ func (n *Node) EncodeMeta(limit int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// DecodeMeta the node Meta field into its metadata
+// DecodeMeta decodes the node Meta field into its individual metadata fields.
 func (n *Node) DecodeMeta() error {
 	// TODO: we blindly trust the info we get from the peers; We should be more defensive to limit the damage a leaked
 	// PSK can cause.

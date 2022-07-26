@@ -6,17 +6,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// DelegateNode implements the memberlist delegation interface
+// DelegateNode implements the memberlist.Delegate interface.
 type delegateNode struct {
 	*common.Node
 }
 
-// NotifyConflict implements the memberlist.Delegate interface
+var _ memberlist.Delegate = (*delegateNode)(nil)
+
+// NotifyConflict implements the memberlist.Delegate interface.
 func (n *delegateNode) NotifyConflict(node, other *memberlist.Node) {
 	logrus.Errorf("node name conflict detected: %s", other.Name)
 }
 
-// NodeMeta implements the memberlist.Delegate interface
+// NodeMeta implements the memberlist.Delegate interface.
 // Metadata is provided by the local node settings, encoding is handled
 // by the node implementation directly
 func (n *delegateNode) NodeMeta(limit int) []byte {
@@ -25,6 +27,7 @@ func (n *delegateNode) NodeMeta(limit int) []byte {
 		logrus.Errorf("failed to encode local node: %s", err)
 		return nil
 	}
+
 	return encoded
 }
 

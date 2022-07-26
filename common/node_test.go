@@ -4,6 +4,8 @@ import (
 	"net/netip"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Node_Encode_Decode(t *testing.T) {
@@ -20,7 +22,10 @@ func Test_Node_Encode_Decode(t *testing.T) {
 		}
 		encoded, _ := node.EncodeMeta(1024)
 		new := Node{Meta: encoded}
-		new.DecodeMeta()
+
+		err := new.DecodeMeta()
+		require.NoError(t, err)
+
 		if !reflect.DeepEqual(node.nodeMeta, new.nodeMeta) {
 			t.Errorf("node encoding then decoding mismatch: %s / %s", node.nodeMeta, new.nodeMeta)
 		}

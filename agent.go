@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/netip"
@@ -96,6 +97,7 @@ func (a *AgentCmd) Run(cli *cli) error {
 
 	// Join the cluster
 	cluster.Update(localNode)
+
 	nodec := cluster.Members() // avoid deadlocks by starting before join
 	if err := backoff.RetryNotify(
 		func() error { return cluster.Join(a.Join) },
@@ -107,9 +109,10 @@ func (a *AgentCmd) Run(cli *cli) error {
 		logrus.WithError(err).Fatal("could not join cluster")
 	}
 
+	ctx, cancelSignals := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer cancelSignals()
+
 	// Main loop
-	incomingSigs := make(chan os.Signal, 1)
-	signal.Notify(incomingSigs, syscall.SIGTERM, os.Interrupt)
 	logrus.Debug("waiting for cluster events")
 	for {
 		select {
@@ -128,14 +131,15 @@ func (a *AgentCmd) Run(cli *cli) error {
 			}
 			if err := wgstate.SetUpInterface(nodes); err != nil {
 				logrus.WithError(err).Error("could not up interface")
-				wgstate.DownInterface()
+				wgstate.DownInterface() // nolint: errcheck // opportunistic
 			}
 			if !a.NoEtcHosts {
 				if err := hostsFile.WriteEntries(hosts); err != nil {
 					logrus.WithError(err).Error("could not write hosts entries")
 				}
 			}
-		case <-incomingSigs:
+		case <-ctx.Done():
+			cancelSignals()
 			logrus.Info("terminating...")
 			cluster.Leave()
 			if !a.NoEtcHosts {
