@@ -2,9 +2,11 @@ name: main
 on: [push, pull_request]
 jobs:
   test:
+    env:
+      LATEST_GO: 1.19.x # version used for release
     strategy:
       matrix:
-        go: [ '1.18.x', '1.19.x' ]
+        go: [ 1.18.x, 1.19.x ]
         os: [ ubuntu-latest ]
     name: ${{ matrix.os }}/go${{ matrix.go }}
     runs-on: ${{ matrix.os }}
@@ -24,6 +26,7 @@ jobs:
 
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v3
+        if: matrix.go == env.LATEST_GO
         with:
           name: binaries
           path: |
