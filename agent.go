@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/costela/wesher/cluster"
 	"github.com/costela/wesher/common"
 	"github.com/costela/wesher/etchosts"
