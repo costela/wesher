@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/memberlist v0.4.0
 	github.com/mattn/go-isatty v0.0.16
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/vishvananda/netlink v1.1.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20220504211119-3d4a969bb56b
 )
