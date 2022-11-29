@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/kong v0.7.1
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/hashicorp/go-sockaddr v1.0.2
-	github.com/hashicorp/memberlist v0.4.0
+	github.com/hashicorp/memberlist v0.5.0
 	github.com/mattn/go-isatty v0.0.16
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
