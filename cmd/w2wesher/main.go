@@ -38,14 +38,20 @@ func main() {
 
 	var bootstrap []peer.AddrInfo
 	if *bootstrapAddrs > "" {
+		// TODO: support multiple bootstrap nodes... somehow
 		for _, rawAddr := range strings.Split(*bootstrapAddrs, ",") {
 			addr, err := peer.AddrInfoFromString(rawAddr)
 			if err != nil {
-				log.Fatal(err)
+				log.
+					With("addr", rawAddr).
+					With("err", err).
+					Fatal("could not parse bootstrap addr")
 			}
 			bootstrap = append(bootstrap, *addr)
 		}
 	}
+
+	log.With("bs", bootstrap).Debug("wat")
 
 	worker := p2p.New(*listenAddr, *announceInterval, pk, psk, bootstrap)
 

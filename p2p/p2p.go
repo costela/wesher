@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -63,15 +64,13 @@ func (w *worker) Start(ctx context.Context) error {
 
 	// initial connect to known peers
 	for _, addr := range w.bootstrap {
-		go func(addr peer.AddrInfo) {
-			log.
-				With("addr", addr).
-				Debug("connecting to the peer")
-
-			err := h.Connect(ctx, addr)
+		go func(p peer.AddrInfo) {
+			log.With("addr", p).Debug("connecting to the peer")
+			err := h.Connect(ctx, p)
 			if err != nil {
 				log.
-					With("addr", addr).
+					With("addr", p).
+					With("err", err).
 					Error("failed to connect to the peer")
 			}
 		}(addr)
@@ -91,21 +90,61 @@ func (w *worker) Start(ctx context.Context) error {
 	}
 	w.topic = topic
 
-	// subscribe to the topic
-	sub, err := topic.Subscribe()
-	if err != nil {
-		return err
-	}
-
-	_ = sub
 	log.
-		With("id", h.ID()).
-		With("addrs", h.Addrs()).
+		With("id", h.ID().String()).
 		Info("initialization complete, starting periodic updates")
 
-	w.periodicAnnounce(ctx)
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(ctx)
 
+	wg.Add(1)
+	go func() {
+		defer cancel()
+		defer wg.Done()
+
+		w.periodicAnnounce(ctx)
+	}()
+
+	go func() {
+		defer cancel()
+		defer wg.Done()
+
+		w.consumeAnnounces(ctx)
+	}()
+
+	wg.Wait()
 	return nil
+}
+
+func (w worker) consumeAnnounces(ctx context.Context) {
+
+	// subscribe to the topic
+	sub, err := w.topic.Subscribe()
+	if err != nil {
+		log.
+			With("err", err).
+			Error("failed to subscribe to announcements")
+		return
+	}
+
+	for {
+		m, err := sub.Next(ctx)
+		if err != nil {
+			log.
+				With("err", err).
+				Error("could not consume a message")
+			return
+		}
+
+		if m.ReceivedFrom == w.host.ID() {
+			continue
+		}
+
+		log.
+			With("data", string(m.Message.Data)).
+			Debug("got announcement")
+	}
+
 }
 
 func (w worker) periodicAnnounce(ctx context.Context) {
@@ -135,7 +174,24 @@ func (w *worker) announceLocal(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, announceTimeout)
 	defer cancel()
 
-	err := w.topic.Publish(ctx, keepaliveMessage)
+	a := announce{
+		AddrInfo: peer.AddrInfo{
+			ID:    w.host.ID(),
+			Addrs: w.host.Addrs(),
+		},
+	}
+
+	log.With("announce", a).Debug("going to send announce")
+
+	data, err := a.Marshal()
+	if err != nil {
+		log.
+			With("err", err).
+			Error("could not publish keepalive")
+		return
+	}
+
+	err = w.topic.Publish(ctx, data)
 	if err != nil {
 		log.
 			With("err", err).
