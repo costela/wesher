@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/derlaft/w2wesher/state"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -17,28 +16,30 @@ import (
 
 var log = logging.Logger("w2wesher:p2p")
 
+var keepaliveMessage = []byte(`keepalive`)
+
 const w2wesherTopicName = "w2w:announces"
 
 const announceTimeout = time.Second * 16
 
 type worker struct {
 	listenAddr       string
-	liveState        *state.State
 	announceInterval time.Duration
 	host             host.Host
 	topic            *pubsub.Topic
 	pubsub           *pubsub.PubSub
 	pk               crypto.PrivKey
 	psk              []byte
+	bootstrap        []peer.AddrInfo
 }
 
-func New(listenAddr string, announceInterval time.Duration, pk crypto.PrivKey, psk []byte, liveState *state.State) *worker {
+func New(listenAddr string, announceInterval time.Duration, pk crypto.PrivKey, psk []byte, bootstrap []peer.AddrInfo) *worker {
 	return &worker{
 		listenAddr:       listenAddr,
-		liveState:        liveState,
 		announceInterval: announceInterval,
 		pk:               pk,
 		psk:              psk,
+		bootstrap:        bootstrap,
 	}
 }
 
@@ -61,14 +62,19 @@ func (w *worker) Start(ctx context.Context) error {
 	w.host = h
 
 	// initial connect to known peers
-	for _, pi := range w.liveState.Peers {
-		go func(p peer.AddrInfo) {
-			log.With("addr", p).Debug("connecting to the peer")
-			err := h.Connect(ctx, p)
+	for _, addr := range w.bootstrap {
+		go func(addr peer.AddrInfo) {
+			log.
+				With("addr", addr).
+				Debug("connecting to the peer")
+
+			err := h.Connect(ctx, addr)
 			if err != nil {
-				log.With("addr", p).Error("failed to connect to the peer")
+				log.
+					With("addr", addr).
+					Error("failed to connect to the peer")
 			}
-		}(pi.AddrInfo)
+		}(addr)
 	}
 
 	// initialize gossipsub
@@ -105,7 +111,7 @@ func (w *worker) Start(ctx context.Context) error {
 func (w worker) periodicAnnounce(ctx context.Context) {
 
 	// make a first announce
-	w.AnnounceLocalState(ctx)
+	w.announceLocal(ctx)
 
 	t := time.NewTicker(w.announceInterval)
 	defer t.Stop()
@@ -114,7 +120,7 @@ func (w worker) periodicAnnounce(ctx context.Context) {
 	for {
 		select {
 		case <-t.C:
-			w.AnnounceLocalState(ctx)
+			w.announceLocal(ctx)
 		case <-ctx.Done():
 			return
 		}
@@ -122,31 +128,17 @@ func (w worker) periodicAnnounce(ctx context.Context) {
 
 }
 
-func (w *worker) AnnounceLocalState(ctx context.Context) {
+func (w *worker) announceLocal(ctx context.Context) {
 
-	w.liveState.Update(w.host.ID(), state.PeerInfo{
-		AddrInfo: peer.AddrInfo{
-			ID:    w.host.ID(),
-			Addrs: w.host.Addrs(),
-		},
-	})
-
-	d, err := w.liveState.Marshal()
-	if err != nil {
-		log.
-			With("err", err).
-			Error("could not marshal state")
-	}
-
-	log.With("state", string(d)).Debug("AnnounceLocalState")
+	log.Debug("announceLocal")
 
 	ctx, cancel := context.WithTimeout(ctx, announceTimeout)
 	defer cancel()
 
-	err = w.topic.Publish(ctx, d)
+	err := w.topic.Publish(ctx, keepaliveMessage)
 	if err != nil {
 		log.
 			With("err", err).
-			Error("could not marshal state")
+			Error("could not publish keepalive")
 	}
 }
