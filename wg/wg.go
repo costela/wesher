@@ -9,8 +9,8 @@ import (
 	"net/netip"
 	"os"
 
+	"github.com/derlaft/w2wesher/config"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -23,8 +23,8 @@ type Adapter interface {
 	DownInterface() error
 }
 
-func (s *State) Run(context.Context) error {
-	<-make(chan struct{})
+func (s *State) Run(ctx context.Context) error {
+	<-ctx.Done()
 	return nil
 }
 
@@ -41,36 +41,39 @@ type State struct {
 // New creates a new Wesher Wireguard state.
 // The Wireguard keys are generated for every new interface.
 // The interface must later be setup using SetUpInterface.
-func New(
-	privateKey crypto.PrivKey,
-	iface string,
-	port int,
-	prefix netip.Prefix,
-	name string,
-) (Adapter, error) {
+func New(cfg *config.Config) (Adapter, error) {
+
+	c := cfg.Wireguard
+
 	client, err := wgctrl.New()
 	if err != nil {
 		return nil, fmt.Errorf("instantiating wireguard client: %w", err)
 	}
 
-	rawKey, err := privateKey.Raw()
-	if err != nil {
-		return nil, fmt.Errorf("unwrapping private key: %w", err)
-	}
-
-	privKey, err := wgtypes.NewKey(rawKey)
+	privKey, err := wgtypes.ParseKey(c.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("loading private key: %w", err)
 	}
 	pubKey := privKey.PublicKey()
 
 	state := State{
-		iface:   iface,
+		iface:   c.Interface,
 		client:  client,
-		Port:    port,
+		Port:    c.ListenPort,
 		PrivKey: privKey,
 		PubKey:  pubKey,
 	}
+
+	name := c.NodeName
+	if name == "" {
+		name, _ = os.Hostname()
+	}
+
+	prefix, err := netip.ParsePrefix(c.NetworkRange)
+	if err != nil {
+		return nil, fmt.Errorf("parsing CIDR: %w", err)
+	}
+
 	if err := state.assignOverlayAddr(prefix, name); err != nil {
 		return nil, fmt.Errorf("assigning overlay address: %w", err)
 	}

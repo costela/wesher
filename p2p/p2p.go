@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/derlaft/w2wesher/config"
 	"github.com/derlaft/w2wesher/runnergroup"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -40,14 +41,30 @@ type worker struct {
 	bootstrap        []peer.AddrInfo
 }
 
-func New(listenAddr string, announceInterval time.Duration, pk crypto.PrivKey, psk []byte, bootstrap []peer.AddrInfo) Node {
+func New(cfg *config.Config) (Node, error) {
+
+	pk, err := cfg.P2P.LoadPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	psk, err := cfg.P2P.LoadPsk()
+	if err != nil {
+		return nil, err
+	}
+
+	bootstrap, err := cfg.P2P.LoadBootstrapPeers()
+	if err != nil {
+		return nil, err
+	}
+
 	return &worker{
-		listenAddr:       listenAddr,
-		announceInterval: announceInterval,
+		listenAddr:       cfg.P2P.ListenAddr,
+		announceInterval: cfg.P2P.AnnounceInterval,
 		pk:               pk,
 		psk:              psk,
 		bootstrap:        bootstrap,
-	}
+	}, nil
 }
 
 func (w *worker) ConnectedPeers() map[peer.ID]multiaddr.Multiaddr {
