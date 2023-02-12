@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/pnet"
+	"github.com/multiformats/go-multiaddr"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
@@ -44,7 +45,23 @@ func New(listenAddr string, announceInterval time.Duration, pk crypto.PrivKey, p
 	}
 }
 
-func (w *worker) Start(ctx context.Context) error {
+func (w *worker) ConnectedPeers(ctx context.Context) map[peer.ID]multiaddr.Multiaddr {
+	ret := make(map[peer.ID]multiaddr.Multiaddr)
+	n := w.host.Network()
+
+	for _, peer := range n.Peerstore().Peers() {
+		for _, addr := range n.ConnsToPeer(peer) {
+			ret[peer] = addr.RemoteMultiaddr()
+
+			// we can only use one addr in wg
+			break
+		}
+	}
+
+	return ret
+}
+
+func (w *worker) Run(ctx context.Context) error {
 
 	log.Debug("starting")
 
@@ -57,7 +74,6 @@ func (w *worker) Start(ctx context.Context) error {
 		libp2p.PrivateNetwork(w.psk),
 		libp2p.EnableNATService(),
 		libp2p.NATPortMap(),
-		// TODO: nat?
 	)
 	if err != nil {
 		return err
@@ -79,7 +95,10 @@ func (w *worker) Start(ctx context.Context) error {
 	}
 
 	// initialize gossipsub
-	ps, err := pubsub.NewGossipSub(ctx, h)
+	ps, err := pubsub.NewGossipSub(ctx, h,
+		// this is a small trusted network: enable automatic peer exchange
+		pubsub.WithPeerExchange(true),
+	)
 	if err != nil {
 		return err
 	}
@@ -118,7 +137,7 @@ func (w *worker) Start(ctx context.Context) error {
 	return nil
 }
 
-func (w worker) consumeAnnounces(ctx context.Context) {
+func (w *worker) consumeAnnounces(ctx context.Context) {
 
 	// subscribe to the topic
 	sub, err := w.topic.Subscribe()
@@ -170,7 +189,7 @@ func (w worker) consumeAnnounces(ctx context.Context) {
 
 }
 
-func (w worker) periodicAnnounce(ctx context.Context) {
+func (w *worker) periodicAnnounce(ctx context.Context) {
 
 	// make a first announce
 	w.announceLocal(ctx)

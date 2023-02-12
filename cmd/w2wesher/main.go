@@ -55,7 +55,7 @@ func main() {
 
 	worker := p2p.New(*listenAddr, *announceInterval, pk, psk, bootstrap)
 
-	err = worker.Start(context.Background())
+	err = worker.Run(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
