@@ -7,8 +7,13 @@ import (
 )
 
 type Announce struct {
-	WireguardPublicKey string
-	AddrInfo           peer.AddrInfo `json:"addr_info"`
+	WireguardState WireguardState `json:"wg"`
+	AddrInfo       peer.AddrInfo  `json:"ai"`
+}
+
+type WireguardState struct {
+	WireguardPublicKey string `json:"pk"`
+	SelectedAddr       string `json:"ip"`
 }
 
 func (a *Announce) Marshal() ([]byte, error) {

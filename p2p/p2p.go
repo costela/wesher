@@ -32,7 +32,7 @@ type Node interface {
 }
 
 type Wireguard interface {
-	PublicKey() string
+	AnnounceInfo() networkstate.WireguardState
 }
 
 type worker struct {
@@ -249,7 +249,7 @@ func (w *worker) announceLocal(ctx context.Context) {
 			ID:    w.host.ID(),
 			Addrs: w.host.Addrs(),
 		},
-		WireguardPublicKey: w.wgControl.PublicKey(),
+		WireguardState: w.wgControl.AnnounceInfo(),
 	}
 
 	log.With("announce", a).Debug("going to send announce")

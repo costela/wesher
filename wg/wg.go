@@ -2,7 +2,6 @@ package wg
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"hash/fnv"
 	"net"
@@ -22,11 +21,23 @@ var log = logging.Logger("w2wesher:wg")
 type Adapter interface {
 	Run(context.Context) error
 	DownInterface() error
-	PublicKey() string
+	AnnounceInfo() networkstate.WireguardState
 }
 
 func (s *State) Run(ctx context.Context) error {
+
+	err := s.SetUpInterface()
+	if err != nil {
+		return err
+	}
+
 	<-ctx.Done()
+
+	err = s.DownInterface()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -129,20 +140,24 @@ func (s *State) DownInterface() error {
 }
 
 // SetUpInterface creates and sets up the associated network interface.
-func (s *State) SetUpInterface(nodes []Node) error {
+func (s *State) SetUpInterface() error {
+
 	if err := netlink.LinkAdd(&netlink.Wireguard{LinkAttrs: netlink.LinkAttrs{Name: s.iface}}); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("creating link %s: %w", s.iface, err)
 	}
 
-	peerCfgs, err := s.nodesToPeerConfigs(nodes)
-	if err != nil {
-		return fmt.Errorf("converting received node information to wireguard format: %w", err)
-	}
+	/*
+		peerCfgs, err := s.nodesToPeerConfigs(s.state.Snapshot)
+		if err != nil {
+			return fmt.Errorf("converting received node information to wireguard format: %w", err)
+		}
+	*/
+
 	if err := s.client.ConfigureDevice(s.iface, wgtypes.Config{
 		PrivateKey:   &s.PrivKey,
 		ListenPort:   &s.Port,
 		ReplacePeers: true,
-		Peers:        peerCfgs,
+		// Peers:        peerCfgs,
 	}); err != nil {
 		return fmt.Errorf("setting wireguard configuration for %s: %w", s.iface, err)
 	}
@@ -151,27 +166,33 @@ func (s *State) SetUpInterface(nodes []Node) error {
 	if err != nil {
 		return fmt.Errorf("getting link information for %s: %w", s.iface, err)
 	}
+
 	if err := netlink.AddrReplace(link, &netlink.Addr{
 		IPNet: addrToIPNet(s.OverlayAddr),
 	}); err != nil {
 		return fmt.Errorf("setting address for %s: %w", s.iface, err)
 	}
+
 	// TODO: make MTU configurable?
 	if err := netlink.LinkSetMTU(link, 1420); err != nil {
 		return fmt.Errorf("setting MTU for %s: %w", s.iface, err)
 	}
+
 	if err := netlink.LinkSetUp(link); err != nil {
 		return fmt.Errorf("enabling interface %s: %w", s.iface, err)
 	}
-	for _, node := range nodes {
-		if err := netlink.RouteAdd(&netlink.Route{
-			LinkIndex: link.Attrs().Index,
-			Dst:       addrToIPNet(node.OverlayAddr),
-			Scope:     netlink.SCOPE_LINK,
-		}); err != nil && !errors.Is(err, os.ErrExist) {
-			return fmt.Errorf("adding route %s to %s: %w", node.OverlayAddr, s.iface, err)
+
+	/*
+		for _, node := range nodes {
+			if err := netlink.RouteAdd(&netlink.Route{
+				LinkIndex: link.Attrs().Index,
+				Dst:       addrToIPNet(node.OverlayAddr),
+				Scope:     netlink.SCOPE_LINK,
+			}); err != nil && !errors.Is(err, os.ErrExist) {
+				return fmt.Errorf("adding route %s to %s: %w", node.OverlayAddr, s.iface, err)
+			}
 		}
-	}
+	*/
 
 	return nil
 }
@@ -196,7 +217,7 @@ func (s *State) nodesToPeerConfigs(nodes []Node) ([]wgtypes.PeerConfig, error) {
 			PublicKey:         *pubKey,
 			ReplaceAllowedIPs: true,
 			Endpoint: &net.UDPAddr{
-				IP:   node.Addr,
+				IP:   node.Endpoint,
 				Port: s.Port,
 			},
 			AllowedIPs: []net.IPNet{
@@ -207,6 +228,9 @@ func (s *State) nodesToPeerConfigs(nodes []Node) ([]wgtypes.PeerConfig, error) {
 	return peerCfgs, nil
 }
 
-func (s *State) PublicKey() string {
-	return s.PubKey.String()
+func (s *State) AnnounceInfo() networkstate.WireguardState {
+	return networkstate.WireguardState{
+		WireguardPublicKey: s.PubKey.String(),
+		SelectedAddr:       s.OverlayAddr.String(),
+	}
 }

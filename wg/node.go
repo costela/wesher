@@ -9,7 +9,7 @@ import (
 )
 
 type Node struct {
-	Addr        net.IP
+	Endpoint    net.IP
 	OverlayAddr netip.Addr
 	ID          peer.ID
 }
