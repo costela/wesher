@@ -29,7 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	adapter, err := wg.New(cfg)
+	adapter, err := wg.New(cfg, state)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,6 +44,7 @@ func main() {
 	err = runnergroup.New(context.TODO()).
 		Go(node.Run).
 		Go(adapter.Run).
+		Go(runnergroup.AbortOnSignal).
 		Wait()
 	if err != nil {
 		log.Error(err)

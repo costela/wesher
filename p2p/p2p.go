@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/derlaft/w2wesher/config"
@@ -166,6 +167,11 @@ func (w *worker) consumeAnnounces(ctx context.Context) error {
 	for {
 		m, err := sub.Next(ctx)
 		if err != nil {
+
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+
 			log.
 				With("err", err).
 				Error("could not consume a message")

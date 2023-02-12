@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/derlaft/w2wesher/config"
+	"github.com/derlaft/w2wesher/networkstate"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -37,12 +38,13 @@ type State struct {
 	Port        int
 	PrivKey     wgtypes.Key
 	PubKey      wgtypes.Key
+	state       *networkstate.State
 }
 
 // New creates a new Wesher Wireguard state.
 // The Wireguard keys are generated for every new interface.
 // The interface must later be setup using SetUpInterface.
-func New(cfg *config.Config) (Adapter, error) {
+func New(cfg *config.Config, state *networkstate.State) (Adapter, error) {
 
 	c := cfg.Wireguard
 
@@ -57,12 +59,13 @@ func New(cfg *config.Config) (Adapter, error) {
 	}
 	pubKey := privKey.PublicKey()
 
-	state := State{
+	s := State{
 		iface:   c.Interface,
 		client:  client,
 		Port:    c.ListenPort,
 		PrivKey: privKey,
 		PubKey:  pubKey,
+		state:   state,
 	}
 
 	name := c.NodeName
@@ -75,11 +78,11 @@ func New(cfg *config.Config) (Adapter, error) {
 		return nil, fmt.Errorf("parsing CIDR: %w", err)
 	}
 
-	if err := state.assignOverlayAddr(prefix, name); err != nil {
+	if err := s.assignOverlayAddr(prefix, name); err != nil {
 		return nil, fmt.Errorf("assigning overlay address: %w", err)
 	}
 
-	return &state, nil
+	return &s, nil
 }
 
 // assignOverlayAddr assigns a new address to the interface.

@@ -3,7 +3,10 @@ package runnergroup
 import (
 	"context"
 	"errors"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"go.uber.org/atomic"
 )
@@ -45,4 +48,16 @@ func (g *Group) Wait() error {
 	defer g.abort()
 	g.wg.Wait()
 	return g.err.Load()
+}
+
+func AbortOnSignal(ctx context.Context) error {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-ctx.Done():
+	case <-sigs:
+	}
+
+	return ctx.Err()
 }
