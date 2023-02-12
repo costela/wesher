@@ -55,6 +55,8 @@ func (w *worker) Start(ctx context.Context) error {
 		libp2p.Identity(w.pk),
 		libp2p.ListenAddrStrings(w.listenAddr),
 		libp2p.PrivateNetwork(w.psk),
+		libp2p.EnableNATService(),
+		libp2p.NATPortMap(),
 		// TODO: nat?
 	)
 	if err != nil {
@@ -143,6 +145,27 @@ func (w worker) consumeAnnounces(ctx context.Context) {
 		log.
 			With("data", string(m.Message.Data)).
 			Debug("got announcement")
+
+		var a announce
+		err = a.Unmarshal(m.Message.Data)
+		if err != nil {
+			log.
+				With("err", err).
+				Error("could not decode the message")
+			return
+		}
+
+		// connect to the new peer in a non-blocking way
+		go func() {
+			err := w.host.Connect(ctx, a.AddrInfo)
+			if err != nil {
+				log.
+					With("err", err).
+					Error("could not connect to a new peer")
+				return
+			}
+		}()
+
 	}
 
 }
