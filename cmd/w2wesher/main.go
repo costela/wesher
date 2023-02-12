@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"net/netip"
+	"os"
 	"strings"
 	"time"
 
@@ -57,13 +59,24 @@ func main() {
 
 	node := p2p.New(*listenAddr, *announceInterval, pk, psk, bootstrap)
 
-	adapter := wg.New()
+	adapter, err := wg.New(
+		pk,
+		/* iface name: TODO make it configurable */ "w2wesher",
+		/* port name: TODO make it configurable */ 10043,
+		/* prefix: TODO make it configurable */ netip.MustParsePrefix("10.42.0.0/24"),
+		os.Getenv("HOSTNAME"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer adapter.DownInterface()
 
 	err = runnergroup.New(context.TODO()).
 		Go(node.Run).
 		Go(adapter.Run).
 		Wait()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 }
