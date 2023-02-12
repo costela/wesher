@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/derlaft/w2wesher/p2p"
+	"github.com/derlaft/w2wesher/runnergroup"
 	"github.com/derlaft/w2wesher/secret"
+	"github.com/derlaft/w2wesher/wg"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -53,9 +55,14 @@ func main() {
 
 	log.With("bs", bootstrap).Debug("wat")
 
-	worker := p2p.New(*listenAddr, *announceInterval, pk, psk, bootstrap)
+	node := p2p.New(*listenAddr, *announceInterval, pk, psk, bootstrap)
 
-	err = worker.Run(context.Background())
+	adapter := wg.New()
+
+	err = runnergroup.New(context.TODO()).
+		Go(node.Run).
+		Go(adapter.Run).
+		Wait()
 	if err != nil {
 		log.Fatal(err)
 	}

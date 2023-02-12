@@ -2,9 +2,9 @@ package p2p
 
 import (
 	"context"
-	"sync"
 	"time"
 
+	"github.com/derlaft/w2wesher/runnergroup"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -24,6 +24,11 @@ const w2wesherTopicName = "w2w:announces"
 
 const announceTimeout = time.Second * 16
 
+type Node interface {
+	Run(context.Context) error
+	ConnectedPeers() map[peer.ID]multiaddr.Multiaddr
+}
+
 type worker struct {
 	listenAddr       string
 	announceInterval time.Duration
@@ -35,7 +40,7 @@ type worker struct {
 	bootstrap        []peer.AddrInfo
 }
 
-func New(listenAddr string, announceInterval time.Duration, pk crypto.PrivKey, psk []byte, bootstrap []peer.AddrInfo) *worker {
+func New(listenAddr string, announceInterval time.Duration, pk crypto.PrivKey, psk []byte, bootstrap []peer.AddrInfo) Node {
 	return &worker{
 		listenAddr:       listenAddr,
 		announceInterval: announceInterval,
@@ -45,7 +50,7 @@ func New(listenAddr string, announceInterval time.Duration, pk crypto.PrivKey, p
 	}
 }
 
-func (w *worker) ConnectedPeers(ctx context.Context) map[peer.ID]multiaddr.Multiaddr {
+func (w *worker) ConnectedPeers() map[peer.ID]multiaddr.Multiaddr {
 	ret := make(map[peer.ID]multiaddr.Multiaddr)
 	n := w.host.Network()
 
@@ -115,29 +120,14 @@ func (w *worker) Run(ctx context.Context) error {
 		With("id", h.ID().String()).
 		Info("initialization complete, starting periodic updates")
 
-	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(ctx)
-
-	wg.Add(1)
-	go func() {
-		defer cancel()
-		defer wg.Done()
-
-		w.periodicAnnounce(ctx)
-	}()
-
-	go func() {
-		defer cancel()
-		defer wg.Done()
-
-		w.consumeAnnounces(ctx)
-	}()
-
-	wg.Wait()
-	return nil
+	return runnergroup.
+		New(ctx).
+		Go(w.periodicAnnounce).
+		Go(w.consumeAnnounces).
+		Wait()
 }
 
-func (w *worker) consumeAnnounces(ctx context.Context) {
+func (w *worker) consumeAnnounces(ctx context.Context) error {
 
 	// subscribe to the topic
 	sub, err := w.topic.Subscribe()
@@ -145,7 +135,7 @@ func (w *worker) consumeAnnounces(ctx context.Context) {
 		log.
 			With("err", err).
 			Error("failed to subscribe to announcements")
-		return
+		return err
 	}
 
 	for {
@@ -154,7 +144,7 @@ func (w *worker) consumeAnnounces(ctx context.Context) {
 			log.
 				With("err", err).
 				Error("could not consume a message")
-			return
+			return err
 		}
 
 		if m.ReceivedFrom == w.host.ID() {
@@ -171,7 +161,7 @@ func (w *worker) consumeAnnounces(ctx context.Context) {
 			log.
 				With("err", err).
 				Error("could not decode the message")
-			return
+			return err
 		}
 
 		// connect to the new peer in a non-blocking way
@@ -189,7 +179,7 @@ func (w *worker) consumeAnnounces(ctx context.Context) {
 
 }
 
-func (w *worker) periodicAnnounce(ctx context.Context) {
+func (w *worker) periodicAnnounce(ctx context.Context) error {
 
 	// make a first announce
 	w.announceLocal(ctx)
@@ -203,7 +193,7 @@ func (w *worker) periodicAnnounce(ctx context.Context) {
 		case <-t.C:
 			w.announceLocal(ctx)
 		case <-ctx.Done():
-			return
+			return nil
 		}
 	}
 
