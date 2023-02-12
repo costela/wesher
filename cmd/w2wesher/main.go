@@ -5,6 +5,7 @@ import (
 	"flag"
 
 	"github.com/derlaft/w2wesher/config"
+	"github.com/derlaft/w2wesher/networkstate"
 	"github.com/derlaft/w2wesher/p2p"
 	"github.com/derlaft/w2wesher/runnergroup"
 	"github.com/derlaft/w2wesher/wg"
@@ -21,14 +22,19 @@ var (
 func main() {
 	flag.Parse()
 
-	cfg, err := config.Load(*configFile)
+	state := networkstate.New()
 
-	node, err := p2p.New(cfg)
+	cfg, err := config.Load(*configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	adapter, err := wg.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node, err := p2p.New(cfg, state, adapter)
 	if err != nil {
 		log.Fatal(err)
 	}

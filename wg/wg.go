@@ -21,6 +21,7 @@ var log = logging.Logger("w2wesher:wg")
 type Adapter interface {
 	Run(context.Context) error
 	DownInterface() error
+	PublicKey() string
 }
 
 func (s *State) Run(ctx context.Context) error {
@@ -201,4 +202,8 @@ func (s *State) nodesToPeerConfigs(nodes []Node) ([]wgtypes.PeerConfig, error) {
 		}
 	}
 	return peerCfgs, nil
+}
+
+func (s *State) PublicKey() string {
+	return s.PubKey.String()
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/derlaft/w2wesher/config"
+	"github.com/derlaft/w2wesher/networkstate"
 	"github.com/derlaft/w2wesher/runnergroup"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -27,7 +28,10 @@ const announceTimeout = time.Second * 16
 
 type Node interface {
 	Run(context.Context) error
-	ConnectedPeers() map[peer.ID]multiaddr.Multiaddr
+}
+
+type Wireguard interface {
+	PublicKey() string
 }
 
 type worker struct {
@@ -39,9 +43,11 @@ type worker struct {
 	pk               crypto.PrivKey
 	psk              []byte
 	bootstrap        []peer.AddrInfo
+	state            *networkstate.State
+	wgControl        Wireguard
 }
 
-func New(cfg *config.Config) (Node, error) {
+func New(cfg *config.Config, state *networkstate.State, wgControl Wireguard) (Node, error) {
 
 	pk, err := cfg.P2P.LoadPrivateKey()
 	if err != nil {
@@ -64,10 +70,12 @@ func New(cfg *config.Config) (Node, error) {
 		pk:               pk,
 		psk:              psk,
 		bootstrap:        bootstrap,
+		state:            state,
+		wgControl:        wgControl,
 	}, nil
 }
 
-func (w *worker) ConnectedPeers() map[peer.ID]multiaddr.Multiaddr {
+func (w *worker) updateAddrs() {
 	ret := make(map[peer.ID]multiaddr.Multiaddr)
 	n := w.host.Network()
 
@@ -80,7 +88,7 @@ func (w *worker) ConnectedPeers() map[peer.ID]multiaddr.Multiaddr {
 		}
 	}
 
-	return ret
+	w.state.UpdateAddrs(ret)
 }
 
 func (w *worker) Run(ctx context.Context) error {
@@ -172,7 +180,7 @@ func (w *worker) consumeAnnounces(ctx context.Context) error {
 			With("data", string(m.Message.Data)).
 			Debug("got announcement")
 
-		var a announce
+		var a networkstate.Announce
 		err = a.Unmarshal(m.Message.Data)
 		if err != nil {
 			log.
@@ -180,6 +188,9 @@ func (w *worker) consumeAnnounces(ctx context.Context) error {
 				Error("could not decode the message")
 			return err
 		}
+
+		// notify live state about the change
+		w.state.OnAnnounce(m.ReceivedFrom, a)
 
 		// connect to the new peer in a non-blocking way
 		go func() {
@@ -190,6 +201,9 @@ func (w *worker) consumeAnnounces(ctx context.Context) error {
 					Error("could not connect to a new peer")
 				return
 			}
+
+			// update network state: maybe addr changed
+			w.updateAddrs()
 		}()
 
 	}
@@ -209,6 +223,7 @@ func (w *worker) periodicAnnounce(ctx context.Context) error {
 		select {
 		case <-t.C:
 			w.announceLocal(ctx)
+			w.updateAddrs()
 		case <-ctx.Done():
 			return nil
 		}
@@ -223,11 +238,12 @@ func (w *worker) announceLocal(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, announceTimeout)
 	defer cancel()
 
-	a := announce{
+	a := networkstate.Announce{
 		AddrInfo: peer.AddrInfo{
 			ID:    w.host.ID(),
 			Addrs: w.host.Addrs(),
 		},
+		WireguardPublicKey: w.wgControl.PublicKey(),
 	}
 
 	log.With("announce", a).Debug("going to send announce")
