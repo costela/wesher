@@ -28,11 +28,12 @@ type P2P struct {
 }
 
 type Wireguard struct {
-	Interface    string
-	PrivateKey   string
-	ListenPort   int
-	NetworkRange string
-	NodeName     string
+	Interface           string
+	PrivateKey          string
+	ListenPort          int
+	NetworkRange        string
+	NodeName            string
+	PersistentKeepalive *time.Duration
 }
 
 func Load(filename string) (*Config, error) {

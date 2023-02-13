@@ -25,6 +25,7 @@ var log = logging.Logger("w2wesher:wg")
 type Adapter interface {
 	Run(context.Context) error
 	AnnounceInfo() networkstate.WireguardState
+	Update()
 }
 
 func (s *State) Run(ctx context.Context) error {
@@ -46,6 +47,12 @@ func (s *State) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-s.forceUpdate:
+			// force update
+			err := s.InterfaceUp()
+			if err != nil {
+				return err
+			}
 		case <-t.C:
 			// periodic peer update
 			err := s.InterfaceUp()
@@ -58,13 +65,15 @@ func (s *State) Run(ctx context.Context) error {
 
 // State holds the configured state of a Wesher Wireguard interface.
 type State struct {
-	iface       string
-	client      *wgctrl.Client
-	OverlayAddr netip.Addr
-	Port        int
-	PrivKey     wgtypes.Key
-	PubKey      wgtypes.Key
-	state       *networkstate.State
+	iface               string
+	client              *wgctrl.Client
+	OverlayAddr         netip.Addr
+	Port                int
+	PrivKey             wgtypes.Key
+	PubKey              wgtypes.Key
+	state               *networkstate.State
+	persistentKeepalive *time.Duration
+	forceUpdate         chan struct{}
 }
 
 // New creates a new Wesher Wireguard state.
@@ -86,12 +95,14 @@ func New(cfg *config.Config, state *networkstate.State) (Adapter, error) {
 	pubKey := privKey.PublicKey()
 
 	s := State{
-		iface:   c.Interface,
-		client:  client,
-		Port:    c.ListenPort,
-		PrivKey: privKey,
-		PubKey:  pubKey,
-		state:   state,
+		iface:               c.Interface,
+		client:              client,
+		Port:                c.ListenPort,
+		PrivKey:             privKey,
+		PubKey:              pubKey,
+		state:               state,
+		persistentKeepalive: c.PersistentKeepalive,
+		forceUpdate:         make(chan struct{}),
 	}
 
 	name := c.NodeName
@@ -228,7 +239,14 @@ func (s *State) peerConfigs(nodes []networkstate.Info) ([]wgtypes.PeerConfig, er
 
 	for _, node := range nodes {
 
-		pubKey, err := wgtypes.ParseKey(node.LastAnnounce.WireguardState.PublicKey)
+		a := node.LastAnnounce
+
+		if a.WireguardState.PublicKey == "" {
+			// have not received an announce from that node just yet
+			continue
+		}
+
+		pubKey, err := wgtypes.ParseKey(a.WireguardState.PublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("parsing wireguard key: %w", err)
 		}
@@ -239,8 +257,9 @@ func (s *State) peerConfigs(nodes []networkstate.Info) ([]wgtypes.PeerConfig, er
 		}
 
 		peerCfgs = append(peerCfgs, wgtypes.PeerConfig{
-			PublicKey:         pubKey,
-			ReplaceAllowedIPs: true,
+			PublicKey:                   pubKey,
+			ReplaceAllowedIPs:           true,
+			PersistentKeepaliveInterval: s.persistentKeepalive,
 			Endpoint: &net.UDPAddr{
 				IP:   net.ParseIP(node.Addr),
 				Port: s.Port,
@@ -259,5 +278,16 @@ func (s *State) AnnounceInfo() networkstate.WireguardState {
 		PublicKey:    s.PubKey.String(),
 		SelectedAddr: s.OverlayAddr.String(),
 		Port:         s.Port,
+	}
+}
+
+func (s State) Update() {
+	select {
+	case s.forceUpdate <- struct{}{}:
+		// force-update sent
+	default:
+		// Run loop is not waiting right now:
+		// it's either not started/stopped
+		// or already updating
 	}
 }

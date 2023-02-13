@@ -33,6 +33,7 @@ type Node interface {
 
 type Wireguard interface {
 	AnnounceInfo() networkstate.WireguardState
+	Update()
 }
 
 type worker struct {
@@ -90,6 +91,7 @@ func (w *worker) updateAddrs() {
 	}
 
 	w.state.UpdateAddrs(ret)
+	w.wgControl.Update()
 }
 
 func (w *worker) Run(ctx context.Context) error {
