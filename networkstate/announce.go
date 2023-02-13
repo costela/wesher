@@ -17,6 +17,10 @@ type WireguardState struct {
 	Port         int    `json:"port"`
 }
 
+func (ws WireguardState) IsValid() bool {
+	return ws.PublicKey > "" && ws.SelectedAddr > "" && ws.Port > 0
+}
+
 func (a *Announce) Marshal() ([]byte, error) {
 	// TODO fastjson
 	return json.Marshal(a)
