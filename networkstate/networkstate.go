@@ -14,7 +14,7 @@ type State struct {
 
 type Info struct {
 	LastAnnounce Announce
-	Addr         multiaddr.Multiaddr
+	Addr         string
 }
 
 func New() *State {
@@ -47,11 +47,32 @@ func (s *State) UpdateAddrs(addrs map[peer.ID]multiaddr.Multiaddr) {
 			s.info[peer] = info
 		}
 
-		info.Addr = addr
+		// try to extract ipv4 or ipv6 addr
+		multiaddr.ForEach(addr, func(c multiaddr.Component) bool {
+			switch c.Protocol().Name {
+			case "ip4", "ip6":
+				info.Addr = c.Value()
+				return true
+			default:
+				return false
+			}
+		})
 	}
 }
 
-func (s *State) Snapshot() {
+// Snapshot tries to make a copy which is more or less deep
+func (s *State) Snapshot() []Info {
 	s.RLock()
 	defer s.RUnlock()
+
+	var entries = make([]Info, 0, len(s.info))
+
+	for _, v := range s.info {
+		// copy by value
+		cp := *v
+
+		entries = append(entries, cp)
+	}
+
+	return entries
 }

@@ -39,8 +39,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	defer adapter.DownInterface()
-
 	err = runnergroup.New(context.TODO()).
 		Go(node.Run).
 		Go(adapter.Run).

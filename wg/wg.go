@@ -2,11 +2,13 @@ package wg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"net"
 	"net/netip"
 	"os"
+	"time"
 
 	"github.com/derlaft/w2wesher/config"
 	"github.com/derlaft/w2wesher/networkstate"
@@ -16,29 +18,42 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+const peerUpdateInterval = time.Minute
+
 var log = logging.Logger("w2wesher:wg")
 
 type Adapter interface {
 	Run(context.Context) error
-	DownInterface() error
 	AnnounceInfo() networkstate.WireguardState
 }
 
 func (s *State) Run(ctx context.Context) error {
 
-	err := s.SetUpInterface()
+	err := s.InterfaceUp()
 	if err != nil {
 		return err
 	}
 
-	<-ctx.Done()
+	defer func() {
+		err = s.InterfaceDown()
+		if err != nil {
+			log.With("err", err).Fatal("could not cleanup interface")
+		}
+	}()
 
-	err = s.DownInterface()
-	if err != nil {
-		return err
+	t := time.NewTicker(peerUpdateInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+			// periodic peer update
+			err := s.InterfaceUp()
+			if err != nil {
+				return err
+			}
+		}
 	}
-
-	return nil
 }
 
 // State holds the configured state of a Wesher Wireguard interface.
@@ -124,8 +139,8 @@ func (s *State) assignOverlayAddr(prefix netip.Prefix, name string) error {
 	return nil
 }
 
-// DownInterface shuts down the associated network interface.
-func (s *State) DownInterface() error {
+// InterfaceDown shuts down the associated network interface.
+func (s *State) InterfaceDown() error {
 	if _, err := s.client.Device(s.iface); err != nil {
 		if os.IsNotExist(err) {
 			return nil // device already gone; noop
@@ -139,25 +154,25 @@ func (s *State) DownInterface() error {
 	return netlink.LinkDel(link)
 }
 
-// SetUpInterface creates and sets up the associated network interface.
-func (s *State) SetUpInterface() error {
+// InterfaceUp creates and sets up the associated network interface.
+func (s *State) InterfaceUp() error {
 
 	if err := netlink.LinkAdd(&netlink.Wireguard{LinkAttrs: netlink.LinkAttrs{Name: s.iface}}); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("creating link %s: %w", s.iface, err)
 	}
 
-	/*
-		peerCfgs, err := s.nodesToPeerConfigs(s.state.Snapshot)
-		if err != nil {
-			return fmt.Errorf("converting received node information to wireguard format: %w", err)
-		}
-	*/
+	nodes := s.state.Snapshot()
+
+	peerCfgs, err := s.peerConfigs(nodes)
+	if err != nil {
+		return fmt.Errorf("converting received node information to wireguard format: %w", err)
+	}
 
 	if err := s.client.ConfigureDevice(s.iface, wgtypes.Config{
 		PrivateKey:   &s.PrivKey,
 		ListenPort:   &s.Port,
 		ReplacePeers: true,
-		// Peers:        peerCfgs,
+		Peers:        peerCfgs,
 	}); err != nil {
 		return fmt.Errorf("setting wireguard configuration for %s: %w", s.iface, err)
 	}
@@ -182,17 +197,21 @@ func (s *State) SetUpInterface() error {
 		return fmt.Errorf("enabling interface %s: %w", s.iface, err)
 	}
 
-	/*
-		for _, node := range nodes {
-			if err := netlink.RouteAdd(&netlink.Route{
-				LinkIndex: link.Attrs().Index,
-				Dst:       addrToIPNet(node.OverlayAddr),
-				Scope:     netlink.SCOPE_LINK,
-			}); err != nil && !errors.Is(err, os.ErrExist) {
-				return fmt.Errorf("adding route %s to %s: %w", node.OverlayAddr, s.iface, err)
-			}
+	for _, node := range nodes {
+
+		selectedAddr, err := netip.ParseAddr(node.LastAnnounce.WireguardState.SelectedAddr)
+		if err != nil {
+			return fmt.Errorf("parsing selected addr: %w", err)
 		}
-	*/
+
+		if err := netlink.RouteAdd(&netlink.Route{
+			LinkIndex: link.Attrs().Index,
+			Dst:       addrToIPNet(selectedAddr),
+			Scope:     netlink.SCOPE_LINK,
+		}); err != nil && !errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("adding route %s to %s: %w", selectedAddr, s.iface, err)
+		}
+	}
 
 	return nil
 }
@@ -204,33 +223,41 @@ func addrToIPNet(addr netip.Addr) *net.IPNet {
 	}
 }
 
-func (s *State) nodesToPeerConfigs(nodes []Node) ([]wgtypes.PeerConfig, error) {
-	peerCfgs := make([]wgtypes.PeerConfig, len(nodes))
-	for i, node := range nodes {
+func (s *State) peerConfigs(nodes []networkstate.Info) ([]wgtypes.PeerConfig, error) {
+	peerCfgs := make([]wgtypes.PeerConfig, 0, len(nodes))
 
-		pubKey, err := node.getWgPubKey()
+	for _, node := range nodes {
+
+		pubKey, err := wgtypes.ParseKey(node.LastAnnounce.WireguardState.PublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("parsing wireguard key: %w", err)
 		}
 
-		peerCfgs[i] = wgtypes.PeerConfig{
-			PublicKey:         *pubKey,
+		selectedAddr, err := netip.ParseAddr(node.LastAnnounce.WireguardState.SelectedAddr)
+		if err != nil {
+			return nil, fmt.Errorf("parsing selected addr: %w", err)
+		}
+
+		peerCfgs = append(peerCfgs, wgtypes.PeerConfig{
+			PublicKey:         pubKey,
 			ReplaceAllowedIPs: true,
 			Endpoint: &net.UDPAddr{
-				IP:   node.Endpoint,
+				IP:   net.ParseIP(node.Addr),
 				Port: s.Port,
 			},
 			AllowedIPs: []net.IPNet{
-				*addrToIPNet(node.OverlayAddr),
+				*addrToIPNet(selectedAddr),
 			},
-		}
+		})
 	}
+
 	return peerCfgs, nil
 }
 
 func (s *State) AnnounceInfo() networkstate.WireguardState {
 	return networkstate.WireguardState{
-		WireguardPublicKey: s.PubKey.String(),
-		SelectedAddr:       s.OverlayAddr.String(),
+		PublicKey:    s.PubKey.String(),
+		SelectedAddr: s.OverlayAddr.String(),
+		Port:         s.Port,
 	}
 }

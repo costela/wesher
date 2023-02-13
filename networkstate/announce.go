@@ -12,8 +12,9 @@ type Announce struct {
 }
 
 type WireguardState struct {
-	WireguardPublicKey string `json:"pk"`
-	SelectedAddr       string `json:"ip"`
+	PublicKey    string `json:"pk"`
+	SelectedAddr string `json:"ip"`
+	Port         int    `json:"port"`
 }
 
 func (a *Announce) Marshal() ([]byte, error) {
