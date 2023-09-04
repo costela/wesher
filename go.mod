@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/alecthomas/kong v0.8.0
 	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/hashicorp/go-sockaddr v1.0.2
+	github.com/hashicorp/go-sockaddr v1.0.4
 	github.com/hashicorp/memberlist v0.5.0
 	github.com/mattn/go-isatty v0.0.19
 	github.com/sirupsen/logrus v1.9.3
@@ -19,7 +19,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.2.0 // indirect
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
