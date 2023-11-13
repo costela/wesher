@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/alecthomas/kong v0.8.1
 	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/hashicorp/go-sockaddr v1.0.5
+	github.com/hashicorp/go-sockaddr v1.0.6
 	github.com/hashicorp/memberlist v0.5.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/sirupsen/logrus v1.9.3
