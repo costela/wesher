@@ -3,7 +3,7 @@ module github.com/costela/wesher
 go 1.18
 
 require (
-	github.com/alecthomas/kong v1.2.1
+	github.com/alecthomas/kong v1.3.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/hashicorp/go-sockaddr v1.0.7
 	github.com/hashicorp/memberlist v0.5.1
