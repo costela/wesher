@@ -6,47 +6,39 @@ jobs:
       LATEST_GO: 1.19.x # version used for release
     strategy:
       matrix:
-        go: [ 1.18.x, 1.19.x ]
-        os: [ ubuntu-latest ]
+        go: [1.18.x, 1.19.x]
+        os: [ubuntu-latest]
     name: ${{ matrix.os }}/go${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3 [pinned by action-pin]
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@be3c94b385c4f180051c996d336f57a34c397495 # v3 [pinned by action-pin]
         with:
           go-version: ${{ matrix.go }}
-
       - run: go test -race -v ./...
-
       - run: make e2e
-
       - run: make release GOARCHES="amd64 arm arm64 mips mipsle mips64 mips64le"
-
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3 [pinned by action-pin]
         if: matrix.go == env.LATEST_GO
         with:
           name: binaries
           path: |
             wesher-*
             wesher.sha256sums
-    
   release:
     name: release
     needs: test
     if: startsWith(github.ref, 'refs/tags/') && github.repository == 'costela/wesher'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4 [pinned by action-pin]
         with:
           name: binaries
-
-      - uses: softprops/action-gh-release@v0.1.14
+      - uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5 # v0.1.14 [pinned by action-pin]
         with:
           fail_on_unmatched_files: true
           files: |
             wesher-*
             wesher.sha256sums
-
